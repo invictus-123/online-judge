@@ -55,8 +55,6 @@ public class TestCaseResult {
 	@Column(name = "execution_time_seconds", precision = 2)
 	private Double executionTimeSeconds;
 
-	@Column(name = "memory_used_mb", precision = 2)
-	private Double memoryUsedMb;
+	@Column(name = "memory_used_mb")
+	private Integer memoryUsedMb;
 }
-
-// TestCaseResultId moved to its own file for clarity and maintainability.

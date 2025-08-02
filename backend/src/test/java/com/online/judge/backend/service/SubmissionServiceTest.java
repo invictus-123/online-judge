@@ -22,6 +22,7 @@ import com.online.judge.backend.model.Submission;
 import com.online.judge.backend.model.User;
 import com.online.judge.backend.model.shared.SubmissionLanguage;
 import com.online.judge.backend.model.shared.SubmissionStatus;
+import com.online.judge.backend.queue.SubmissionPublisher;
 import com.online.judge.backend.repository.ProblemRepository;
 import com.online.judge.backend.repository.SubmissionRepository;
 import com.online.judge.backend.util.UserUtil;
@@ -50,13 +51,17 @@ class SubmissionServiceTest {
 	private SubmissionRepository submissionRepository;
 
 	@Mock
+	private SubmissionPublisher submissionPublisher;
+
+	@Mock
 	private UserUtil userUtil;
 
 	private SubmissionService submissionService;
 
 	@BeforeEach
 	void setUp() {
-		submissionService = new SubmissionService(problemRepository, submissionRepository, userUtil, PAGE_SIZE);
+		submissionService = new SubmissionService(
+				problemRepository, submissionRepository, submissionPublisher, userUtil, PAGE_SIZE);
 	}
 
 	@Test
@@ -127,6 +132,7 @@ class SubmissionServiceTest {
 		assertEquals(request.code(), savedSubmission.getCode());
 		assertEquals(request.language(), savedSubmission.getLanguage());
 		assertEquals(SubmissionStatus.WAITING_FOR_EXECUTION, savedSubmission.getStatus());
+		verify(submissionPublisher).sendSubmission(any());
 	}
 
 	@Test
@@ -142,6 +148,37 @@ class SubmissionServiceTest {
 				() -> submissionService.submitCode(request),
 				"Problem with ID " + problemId + " not found");
 		verifyNoInteractions(submissionRepository);
+		verifyNoInteractions(submissionPublisher);
+	}
+
+	@Test
+	void updateStatus_shouldUpdateSubmissionStatus() {
+		Long submissionId = 1L;
+		Submission submission = createSubmissionWithId(submissionId);
+		SubmissionStatus newStatus = SubmissionStatus.RUNTIME_ERROR;
+		when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+		Submission newSubmission = createSubmissionWithId(submissionId);
+		newSubmission.setStatus(newStatus);
+
+		submissionService.updateStatus(submissionId, newStatus);
+
+		verify(submissionRepository).save(newSubmission);
+	}
+
+	@Test
+	void updateTimeTakenAndMemoryUsed_shouldUpdateSubmissionTimeTakenAndMemoryUsed() {
+		Long submissionId = 1L;
+		Submission submission = createSubmissionWithId(submissionId);
+		Double timeTaken = 1.2;
+		Integer memoryUsed = 24;
+		when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+		Submission newSubmission = createSubmissionWithId(submissionId);
+		newSubmission.setExecutionTimeSeconds(timeTaken);
+		newSubmission.setMemoryUsedMb(memoryUsed);
+
+		submissionService.updateTimeTakenAndMemoryUsed(submissionId, timeTaken, memoryUsed);
+
+		verify(submissionRepository).save(newSubmission);
 	}
 
 	private Submission createSubmissionWithId(Long submissionId) {
