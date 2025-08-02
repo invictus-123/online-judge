@@ -22,6 +22,7 @@ import com.online.judge.backend.model.Submission;
 import com.online.judge.backend.model.User;
 import com.online.judge.backend.model.shared.SubmissionLanguage;
 import com.online.judge.backend.model.shared.SubmissionStatus;
+import com.online.judge.backend.queue.SubmissionPublisher;
 import com.online.judge.backend.repository.ProblemRepository;
 import com.online.judge.backend.repository.SubmissionRepository;
 import com.online.judge.backend.util.UserUtil;
@@ -50,13 +51,17 @@ class SubmissionServiceTest {
 	private SubmissionRepository submissionRepository;
 
 	@Mock
+	private SubmissionPublisher submissionPublisher;
+
+	@Mock
 	private UserUtil userUtil;
 
 	private SubmissionService submissionService;
 
 	@BeforeEach
 	void setUp() {
-		submissionService = new SubmissionService(problemRepository, submissionRepository, userUtil, PAGE_SIZE);
+		submissionService = new SubmissionService(
+				problemRepository, submissionRepository, submissionPublisher, userUtil, PAGE_SIZE);
 	}
 
 	@Test
