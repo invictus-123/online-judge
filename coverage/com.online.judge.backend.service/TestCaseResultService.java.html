@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TestCaseResultService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.service</a> &gt; <span class="el_source">TestCaseResultService.java</span></div><h1>TestCaseResultService.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.service;
+
+import static com.online.judge.backend.converter.TestCaseResultConverter.toTestCaseResult;
+
+import com.online.judge.backend.dto.message.TestCaseResultMessage;
+import com.online.judge.backend.exception.SubmissionNotFoundException;
+import com.online.judge.backend.model.Submission;
+import com.online.judge.backend.model.TestCaseResult;
+import com.online.judge.backend.repository.SubmissionRepository;
+import com.online.judge.backend.repository.TestCaseResultRepository;
+import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Service class for managing test case results. */
+@Service
+public class TestCaseResultService {
+<span class="fc" id="L20">	private static final Logger logger = LoggerFactory.getLogger(TestCaseResultService.class);</span>
+
+	private final SubmissionRepository submissionRepository;
+	private final TestCaseResultRepository testCaseResultRepository;
+
+	public TestCaseResultService(
+<span class="fc" id="L26">			SubmissionRepository submissionRepository, TestCaseResultRepository testCaseResultRepository) {</span>
+<span class="fc" id="L27">		this.submissionRepository = submissionRepository;</span>
+<span class="fc" id="L28">		this.testCaseResultRepository = testCaseResultRepository;</span>
+<span class="fc" id="L29">	}</span>
+
+	/**
+	 * Updates the status for a particular submission.
+	 *
+	 * @param submissionId
+	 *             ID of the submission
+	 * @param testCaseResults
+	 *             Result of the individual test case execution
+	 */
+	@Transactional
+	public void processTestResult(Long submissionId, List&lt;TestCaseResultMessage&gt; testCaseResults) {
+<span class="nc" id="L41">		Submission submission = submissionRepository</span>
+<span class="nc" id="L42">				.findById(submissionId)</span>
+<span class="nc" id="L43">				.orElseThrow(() -&gt; toSubmissionNotFoundException(submissionId));</span>
+
+<span class="nc" id="L45">		List&lt;TestCaseResult&gt; testCaseResultEntities = toTestCaseResult(submission, testCaseResults);</span>
+<span class="nc" id="L46">		testCaseResultRepository.saveAll(testCaseResultEntities);</span>
+<span class="nc" id="L47">	}</span>
+
+	private static SubmissionNotFoundException toSubmissionNotFoundException(Long submissionId) {
+<span class="nc" id="L50">		logger.error(&quot;Submission with ID {} not found&quot;, submissionId);</span>
+<span class="nc" id="L51">		return new SubmissionNotFoundException(&quot;Submission with ID &quot; + submissionId + &quot; not found&quot;);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

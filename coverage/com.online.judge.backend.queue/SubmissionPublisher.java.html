@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SubmissionPublisher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.queue</a> &gt; <span class="el_source">SubmissionPublisher.java</span></div><h1>SubmissionPublisher.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.queue;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.online.judge.backend.config.RabbitMqConfig;
+import com.online.judge.backend.dto.message.SubmissionMessage;
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Service;
+
+@Service
+public class SubmissionPublisher implements RabbitTemplate.ConfirmCallback {
+<span class="fc" id="L16">	private static final Logger log = LoggerFactory.getLogger(SubmissionPublisher.class);</span>
+
+	private final RabbitTemplate rabbitTemplate;
+	private final ObjectMapper objectMapper;
+
+<span class="fc" id="L21">	public SubmissionPublisher(RabbitTemplate rabbitTemplate, ObjectMapper objectMapper) {</span>
+<span class="fc" id="L22">		this.rabbitTemplate = rabbitTemplate;</span>
+<span class="fc" id="L23">		this.objectMapper = objectMapper;</span>
+<span class="fc" id="L24">	}</span>
+
+	@PostConstruct
+	public void init() {
+<span class="fc" id="L28">		rabbitTemplate.setConfirmCallback(this);</span>
+<span class="fc" id="L29">	}</span>
+
+	public void sendSubmission(SubmissionMessage submissionMessage) {
+		try {
+<span class="fc" id="L33">			CorrelationData correlationData = new CorrelationData(String.valueOf(submissionMessage.submissionId()));</span>
+
+<span class="pc" id="L35">			rabbitTemplate.convertAndSend(</span>
+					RabbitMqConfig.SUBMISSIONS_EXCHANGE,
+					RabbitMqConfig.SUBMISSION_NEW_KEY,
+<span class="fc" id="L38">					objectMapper.writeValueAsString(submissionMessage),</span>
+					correlationData);
+<span class="nc" id="L40">			log.info(&quot;Submission {} published to RabbitMQ.&quot;, submissionMessage.submissionId());</span>
+<span class="fc" id="L41">		} catch (Exception e) {</span>
+<span class="fc" id="L42">			log.error(&quot;Failed to publish submission {}: {}&quot;, submissionMessage.submissionId(), e.getMessage());</span>
+			// Handle publishing failure
+<span class="nc" id="L44">		}</span>
+<span class="fc" id="L45">	}</span>
+
+	@Override
+	public void confirm(@Nullable CorrelationData correlationData, boolean ack, @Nullable String cause) {
+<span class="nc bnc" id="L49" title="All 2 branches missed.">		if (correlationData == null) {</span>
+<span class="nc" id="L50">			return;</span>
+		}
+
+<span class="nc bnc" id="L53" title="All 2 branches missed.">		if (ack) {</span>
+<span class="nc" id="L54">			log.info(&quot;Publisher confirm ACK received for submission ID: {}&quot;, correlationData.getId());</span>
+		} else {
+<span class="nc" id="L56">			log.error(</span>
+<span class="nc" id="L57">					&quot;Publisher confirm NACK received for submission ID: {}. Cause: {}&quot;, correlationData.getId(), cause);</span>
+			// Implement retry logic or mark submission as failed in the database
+		}
+<span class="nc" id="L60">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ResultListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.queue</a> &gt; <span class="el_source">ResultListener.java</span></div><h1>ResultListener.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.queue;
+
+import static com.online.judge.backend.config.RabbitMqConfig.RESULTS_QUEUE;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.online.judge.backend.dto.message.ResultNotificationMessage;
+import com.online.judge.backend.service.SubmissionService;
+import com.online.judge.backend.service.TestCaseResultService;
+import com.rabbitmq.client.Channel;
+import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ResultListener {
+<span class="fc" id="L20">	private static final Logger log = LoggerFactory.getLogger(ResultListener.class);</span>
+
+	private final ObjectMapper objectMapper;
+	private final SubmissionService submissionService;
+	private final TestCaseResultService testCaseResultService;
+
+	public ResultListener(
+			ObjectMapper objectMapper,
+			SubmissionService submissionService,
+<span class="fc" id="L29">			TestCaseResultService testCaseResultService) {</span>
+<span class="fc" id="L30">		this.objectMapper = objectMapper;</span>
+<span class="fc" id="L31">		this.submissionService = submissionService;</span>
+<span class="fc" id="L32">		this.testCaseResultService = testCaseResultService;</span>
+<span class="fc" id="L33">	}</span>
+
+	@RabbitListener(queues = RESULTS_QUEUE)
+	public void handleFinalResult(String message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag)
+			throws IOException {
+<span class="nc" id="L38">		ResultNotificationMessage resultNotificationMessage =</span>
+<span class="nc" id="L39">				objectMapper.readValue(message, ResultNotificationMessage.class);</span>
+<span class="nc" id="L40">		log.info(&quot;Received final result for submission {}&quot;, resultNotificationMessage.submissionId());</span>
+		try {
+<span class="nc" id="L42">			submissionService.updateTimeTakenAndMemoryUsed(</span>
+<span class="nc" id="L43">					resultNotificationMessage.submissionId(),</span>
+<span class="nc" id="L44">					resultNotificationMessage.timeTaken(),</span>
+<span class="nc" id="L45">					resultNotificationMessage.memoryUsed());</span>
+<span class="nc" id="L46">			testCaseResultService.processTestResult(</span>
+<span class="nc" id="L47">					resultNotificationMessage.submissionId(), resultNotificationMessage.testCaseResults());</span>
+
+<span class="nc" id="L49">			channel.basicAck(tag, /* multiple= */ false);</span>
+<span class="nc" id="L50">			log.debug(&quot;ACK sent for final result of submission {}&quot;, resultNotificationMessage.submissionId());</span>
+<span class="nc" id="L51">		} catch (Exception e) {</span>
+<span class="nc" id="L52">			log.error(</span>
+					&quot;Error processing final result for submission {}: {}&quot;,
+<span class="nc" id="L54">					resultNotificationMessage.submissionId(),</span>
+<span class="nc" id="L55">					e.getMessage());</span>
+
+<span class="nc" id="L57">			channel.basicNack(tag, /* multiple= */ false, /* requeue= */ false);</span>
+<span class="nc" id="L58">			log.warn(&quot;NACK sent for final result of submission {}&quot;, resultNotificationMessage.submissionId());</span>
+<span class="nc" id="L59">		}</span>
+<span class="nc" id="L60">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

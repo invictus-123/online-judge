@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RabbitMqConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.config</a> &gt; <span class="el_source">RabbitMqConfig.java</span></div><h1>RabbitMqConfig.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.config;
+
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.FanoutExchange;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+<span class="fc" id="L14">public class RabbitMqConfig {</span>
+	public static final String SUBMISSIONS_EXCHANGE = &quot;oj.ex.submissions&quot;;
+	public static final String STATUS_EXCHANGE = &quot;oj.ex.status&quot;;
+	public static final String RESULTS_EXCHANGE = &quot;oj.ex.results&quot;;
+
+	public static final String SUBMISSIONS_DLX = &quot;oj.ex.submissions.dlx&quot;;
+
+	public static final String SUBMISSIONS_QUEUE = &quot;oj.q.submissions&quot;;
+	public static final String STATUS_QUEUE = &quot;oj.q.status&quot;;
+	public static final String RESULTS_QUEUE = &quot;oj.q.results&quot;;
+
+	public static final String SUBMISSIONS_RETRY_QUEUE = &quot;oj.q.submissions.retry&quot;;
+	public static final String SUBMISSIONS_FAILED_QUEUE = &quot;oj.q.submissions.failed&quot;;
+
+	public static final String SUBMISSION_NEW_KEY = &quot;submission.new&quot;;
+	public static final String SUBMISSION_STATUS_KEY = &quot;submission.status&quot;;
+	public static final String SUBMISSION_RESULT_KEY = &quot;submission.result&quot;;
+
+	@Value(&quot;${rabbitmq.retry.ttl:30000}&quot;)
+	private Integer retryTtl;
+
+	@Bean
+	DirectExchange submissionsExchange() {
+<span class="fc" id="L37">		return new DirectExchange(SUBMISSIONS_EXCHANGE);</span>
+	}
+
+	@Bean
+	DirectExchange statusExchange() {
+<span class="fc" id="L42">		return new DirectExchange(STATUS_EXCHANGE);</span>
+	}
+
+	@Bean
+	DirectExchange resultsExchange() {
+<span class="fc" id="L47">		return new DirectExchange(RESULTS_EXCHANGE);</span>
+	}
+
+	@Bean
+	Queue submissionsQueue() {
+<span class="fc" id="L52">		return QueueBuilder.durable(SUBMISSIONS_QUEUE)</span>
+<span class="fc" id="L53">				.withArgument(&quot;x-dead-letter-exchange&quot;, SUBMISSIONS_DLX)</span>
+<span class="fc" id="L54">				.build();</span>
+	}
+
+	@Bean
+	Binding submissionsBinding(Queue submissionsQueue, DirectExchange submissionsExchange) {
+<span class="fc" id="L59">		return BindingBuilder.bind(submissionsQueue).to(submissionsExchange).with(SUBMISSION_NEW_KEY);</span>
+	}
+
+	@Bean
+	Queue statusQueue() {
+<span class="fc" id="L64">		return new Queue(STATUS_QUEUE, true);</span>
+	}
+
+	@Bean
+	Binding statusBinding(Queue statusQueue, DirectExchange statusExchange) {
+<span class="fc" id="L69">		return BindingBuilder.bind(statusQueue).to(statusExchange).with(SUBMISSION_STATUS_KEY);</span>
+	}
+
+	@Bean
+	Queue resultsQueue() {
+<span class="fc" id="L74">		return new Queue(RESULTS_QUEUE, true);</span>
+	}
+
+	@Bean
+	Binding resultsBinding(Queue resultsQueue, DirectExchange resultsExchange) {
+<span class="fc" id="L79">		return BindingBuilder.bind(resultsQueue).to(resultsExchange).with(SUBMISSION_RESULT_KEY);</span>
+	}
+
+	@Bean
+	FanoutExchange submissionsDlx() {
+<span class="fc" id="L84">		return new FanoutExchange(SUBMISSIONS_DLX);</span>
+	}
+
+	@Bean
+	Queue submissionsRetryQueue() {
+<span class="fc" id="L89">		return QueueBuilder.durable(SUBMISSIONS_RETRY_QUEUE)</span>
+<span class="fc" id="L90">				.withArgument(&quot;x-dead-letter-exchange&quot;, SUBMISSIONS_EXCHANGE)</span>
+<span class="fc" id="L91">				.withArgument(&quot;x-dead-letter-routing-key&quot;, SUBMISSION_NEW_KEY)</span>
+<span class="fc" id="L92">				.withArgument(&quot;x-message-ttl&quot;, retryTtl)</span>
+<span class="fc" id="L93">				.build();</span>
+	}
+
+	@Bean
+	Binding submissionsRetryBinding(Queue submissionsRetryQueue, FanoutExchange submissionsDlx) {
+<span class="fc" id="L98">		return BindingBuilder.bind(submissionsRetryQueue).to(submissionsDlx);</span>
+	}
+
+	@Bean
+	Queue submissionsFailedQueue() {
+<span class="fc" id="L103">		return new Queue(SUBMISSIONS_FAILED_QUEUE, true);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
