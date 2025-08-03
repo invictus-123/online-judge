@@ -158,7 +158,7 @@ public class SubmissionService {
 				.orElseThrow(() -> toSubmissionNotFoundException(submissionId));
 
 		logger.info(
-				"Update time taken and memory used for submission {} to {} and {} respectively.",
+				"Update time taken and memory used for submission {} to {}s and {}mb respectively.",
 				submissionId,
 				timeTaken,
 				memoryUsed);
