@@ -43,6 +43,8 @@ public class ResultListener {
 					resultNotificationMessage.submissionId(),
 					resultNotificationMessage.timeTaken(),
 					resultNotificationMessage.memoryUsed());
+			submissionService.updateStatus(
+					resultNotificationMessage.submissionId(), resultNotificationMessage.status());
 			testCaseResultService.processTestResult(
 					resultNotificationMessage.submissionId(), resultNotificationMessage.testCaseResults());
 
