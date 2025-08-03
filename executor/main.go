@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"online-judge/executor/master"
 	"online-judge/executor/rabbitmq"
@@ -10,7 +11,6 @@ import (
 )
 
 const (
-	rabbitMqQUrl    = "amqp://guest:guest@localhost:5672/"
 	workerCount     = 20
 	submissionQueue = "oj.q.submissions"
 )
@@ -18,7 +18,16 @@ const (
 func main() {
 	log.Println("Starting Go Code Executor...")
 
-	mqClient, err := rabbitmq.NewClient(rabbitMqQUrl)
+	rabbitMQHost := getEnv("VM_EXTERNAL_ID", "localhost")
+	rabbitMQPort := getEnv("RABBITMQ_PORT", "5672")
+	rabbitMQUser := getEnv("RABBITMQ_USER", "guest")
+	rabbitMQPass := getEnv("RABBITMQ_PASSWORD", "guest")
+
+	rabbitMqURL := fmt.Sprintf("amqp://%s:%s@%s:%s/", rabbitMQUser, rabbitMQPass, rabbitMQHost, rabbitMQPort)
+
+	log.Printf("Connecting to RabbitMQ at %s:%s", rabbitMQHost, rabbitMQPort)
+
+	mqClient, err := rabbitmq.NewClient(rabbitMqURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}
@@ -36,6 +45,13 @@ func main() {
 
 	waitForShutdown()
 	log.Println("Shutting down executor...")
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
 
 func waitForShutdown() {
