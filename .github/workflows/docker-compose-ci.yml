@@ -24,16 +24,17 @@ jobs:
           RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        run: docker compose up -d --build
+        run: docker compose up --build --wait
 
-      - name: Wait for services to be healthy
-        run: |
-          echo "Waiting for services to start..."
-          sleep 30
+      - name: Display Docker logs for debugging
+        if: always()
+        run: docker compose logs
 
-      - name: Verify Backend Service
-        run: |
-          curl --fail http://localhost:8080/actuator/health
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
       - name: Run Integration Tests
         run: |
