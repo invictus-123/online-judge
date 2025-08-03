@@ -1,0 +1,44 @@
+name: Docker Compose CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Start services with Docker Compose
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
+          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: docker compose up -d --build
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for services to start..."
+          sleep 30
+
+      - name: Verify Backend Service
+        run: |
+          curl --fail http://localhost:8080/actuator/health
+
+      - name: Run Integration Tests
+        run: |
+          mvn test -f ./backend/pom.xml -Dtest=LifecycleIT
+
+      - name: Stop services
+        if: always()
+        run: docker compose down

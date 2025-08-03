@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: online-judge-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - online-judge-net
+
+  rabbitmq:
+    image: rabbitmq:3.9-management-alpine
+    container_name: online-judge-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    networks:
+      - online-judge-net
+
+  backend:
+    build: ./backend
+    container_name: online-judge-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+      - rabbitmq
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - online-judge-net
+
+  executor:
+    build: ./executor
+    container_name: online-judge-executor
+    depends_on:
+      - rabbitmq
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASSWORD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - online-judge-net
+
+volumes:
+  postgres_data:
+
+networks:
+  online-judge-net:
+    driver: bridge
