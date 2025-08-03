@@ -58,6 +58,7 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --platform=managed \
             --allow-unauthenticated \
+            --revision-suffix=deploy-${{ github.sha }} \
             --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://${{ env.VM_EXTERNAL_ID }}:5432/online_judge,SPRING_DATASOURCE_USERNAME=${{ env.SPRING_DATASOURCE_USERNAME }},SPRING_DATASOURCE_PASSWORD=${{ env.SPRING_DATASOURCE_PASSWORD }}},SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver,SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect,SPRING_RABBITMQ_HOST=${{ env.VM_EXTERNAL_ID }}"
 
       - name: Deploy executor to Cloud Run
