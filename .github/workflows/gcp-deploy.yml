@@ -77,45 +77,6 @@ jobs:
             --port=8080 \
             --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://${{ env.VM_EXTERNAL_ID }}:5432/${{ env.SPRING_DATASOURCE_DB_NAME }},SPRING_DATASOURCE_USERNAME=${{ env.SPRING_DATASOURCE_USERNAME }},SPRING_DATASOURCE_PASSWORD=${{ env.SPRING_DATASOURCE_PASSWORD }},SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver,SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect,SPRING_RABBITMQ_HOST=${{ env.VM_EXTERNAL_ID }},SPRING_RABBITMQ_PORT=${{ env.RABBITMQ_PORT }},SPRING_RABBITMQ_USERNAME=${{ secrets.RABBITMQ_USER }},SPRING_RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}"
 
-      - name: Wait for backend to be ready
-        run: |
-          echo "Waiting for backend to be ready..."
-          BACKEND_URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE_NAME }} --region=${{ env.GCP_REGION }} --format="value(status.url)")
-          echo "Backend URL: $BACKEND_URL"
-          
-          # Wait for backend and RabbitMQ readiness with timeout
-          TIMEOUT=300  # 5 minutes timeout
-          INTERVAL=10  # Check every 10 seconds
-          ELAPSED=0
-          
-          while [ $ELAPSED -lt $TIMEOUT ]; do
-            echo "Checking backend and RabbitMQ readiness... (${ELAPSED}s elapsed)"
-            
-            # Check custom RabbitMQ readiness endpoint
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$BACKEND_URL/actuator/health/rabbitmq-ready" || echo "000")
-            
-            if [ "$HTTP_STATUS" = "200" ]; then
-              echo "Backend and RabbitMQ are fully ready!"
-              break
-            elif [ "$HTTP_STATUS" = "503" ]; then
-              echo "Backend is up but RabbitMQ not ready yet..."
-            elif [ "$HTTP_STATUS" = "000" ]; then
-              echo "Backend not reachable yet..."
-            else
-              echo "Backend returned HTTP status: $HTTP_STATUS"
-            fi
-            
-            sleep $INTERVAL
-            ELAPSED=$((ELAPSED + INTERVAL))
-          done
-          
-          if [ $ELAPSED -ge $TIMEOUT ]; then
-            echo "Timeout waiting for backend to be ready"
-            exit 1
-          fi
-          
-          echo "Backend is fully ready. Proceeding with executor deployment."
-
   deploy-executor:
     needs: deploy-backend
     runs-on: ubuntu-latest
