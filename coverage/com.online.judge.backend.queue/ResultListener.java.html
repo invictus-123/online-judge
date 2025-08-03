@@ -43,20 +43,22 @@ public class ResultListener {
 <span class="nc" id="L43">					resultNotificationMessage.submissionId(),</span>
 <span class="nc" id="L44">					resultNotificationMessage.timeTaken(),</span>
 <span class="nc" id="L45">					resultNotificationMessage.memoryUsed());</span>
-<span class="nc" id="L46">			testCaseResultService.processTestResult(</span>
-<span class="nc" id="L47">					resultNotificationMessage.submissionId(), resultNotificationMessage.testCaseResults());</span>
+<span class="nc" id="L46">			submissionService.updateStatus(</span>
+<span class="nc" id="L47">					resultNotificationMessage.submissionId(), resultNotificationMessage.status());</span>
+<span class="nc" id="L48">			testCaseResultService.processTestResult(</span>
+<span class="nc" id="L49">					resultNotificationMessage.submissionId(), resultNotificationMessage.testCaseResults());</span>
 
-<span class="nc" id="L49">			channel.basicAck(tag, /* multiple= */ false);</span>
-<span class="nc" id="L50">			log.debug(&quot;ACK sent for final result of submission {}&quot;, resultNotificationMessage.submissionId());</span>
-<span class="nc" id="L51">		} catch (Exception e) {</span>
-<span class="nc" id="L52">			log.error(</span>
+<span class="nc" id="L51">			channel.basicAck(tag, /* multiple= */ false);</span>
+<span class="nc" id="L52">			log.debug(&quot;ACK sent for final result of submission {}&quot;, resultNotificationMessage.submissionId());</span>
+<span class="nc" id="L53">		} catch (Exception e) {</span>
+<span class="nc" id="L54">			log.error(</span>
 					&quot;Error processing final result for submission {}: {}&quot;,
-<span class="nc" id="L54">					resultNotificationMessage.submissionId(),</span>
-<span class="nc" id="L55">					e.getMessage());</span>
+<span class="nc" id="L56">					resultNotificationMessage.submissionId(),</span>
+<span class="nc" id="L57">					e.getMessage());</span>
 
-<span class="nc" id="L57">			channel.basicNack(tag, /* multiple= */ false, /* requeue= */ false);</span>
-<span class="nc" id="L58">			log.warn(&quot;NACK sent for final result of submission {}&quot;, resultNotificationMessage.submissionId());</span>
-<span class="nc" id="L59">		}</span>
-<span class="nc" id="L60">	}</span>
+<span class="nc" id="L59">			channel.basicNack(tag, /* multiple= */ false, /* requeue= */ false);</span>
+<span class="nc" id="L60">			log.warn(&quot;NACK sent for final result of submission {}&quot;, resultNotificationMessage.submissionId());</span>
+<span class="nc" id="L61">		}</span>
+<span class="nc" id="L62">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
