@@ -27,4 +27,4 @@ A full-stack web application for solving Data Structures and Algorithms (DSA) pr
 - **React**
 
 ### Code Execution
-- **Dockerized microservice** for executing submitted code securely
+- **Dockerized microservice** for executing submitted code securely in Go
