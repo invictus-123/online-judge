@@ -12,6 +12,9 @@ env:
   SPRING_DATASOURCE_DB_NAME: ${{ secrets.POSTGRES_DB }}
   SPRING_DATASOURCE_USERNAME: ${{ secrets.POSTGRES_USER }}
   SPRING_DATASOURCE_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  RABBITMQ_PORT: ${{ secrets.RABBITMQ_PORT }}
+  RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USER }}
+  RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
   ARTIFACT_REGISTRY_REPO: online-judge-repo
   BACKEND_SERVICE_NAME: online-judge-backend
   EXECUTOR_SERVICE_NAME: online-judge-executor
@@ -68,4 +71,4 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --platform=managed \
             --allow-unauthenticated \
-            --set-env-vars="RABBITMQ_HOST=${{ env.VM_EXTERNAL_ID }}"
+            --set-env-vars="RABBITMQ_HOST=${{ env.VM_EXTERNAL_ID }},RABBITMQ_PORT=${{ env.RABBITMQ_PORT}},RABBITMQ_USER=${{ env.RABBITMQ_USERNAME }},RABBITMQ_PASS=${{ env.RABBITMQ_PASSWORD }}"

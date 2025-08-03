@@ -18,10 +18,10 @@ const (
 func main() {
 	log.Println("Starting Go Code Executor...")
 
-	rabbitMQHost := getEnv("VM_EXTERNAL_ID", "localhost")
+	rabbitMQHost := getEnv("RABBITMQ_HOST", "localhost")
 	rabbitMQPort := getEnv("RABBITMQ_PORT", "5672")
 	rabbitMQUser := getEnv("RABBITMQ_USER", "guest")
-	rabbitMQPass := getEnv("RABBITMQ_PASSWORD", "guest")
+	rabbitMQPass := getEnv("RABBITMQ_PASS", "guest")
 
 	rabbitMqURL := fmt.Sprintf("amqp://%s:%s@%s:%s/", rabbitMQUser, rabbitMQPass, rabbitMQHost, rabbitMQPort)
 
