@@ -7,7 +7,7 @@ on:
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  GCP_REGION: us-central1-c
+  GCP_REGION: us-central1
   VM_EXTERNAL_ID: ${{ secrets.VM_EXTERNAL_ID }}
   ARTIFACT_REGISTRY_REPO: online-judge-repo
   BACKEND_SERVICE_NAME: online-judge-backend
