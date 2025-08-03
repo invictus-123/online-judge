@@ -22,9 +22,10 @@ A full-stack web application for solving Data Structures and Algorithms (DSA) pr
 - **Spring Boot (Java)**
 - **PostgreSQL**
 - **Spring Security** with JWT-based authentication
+- **RabbitMQ88 for communicating with the Executor
 
 ### Frontend
 - **React**
 
-### Code Execution
+### Executor
 - **Dockerized microservice** for executing submitted code securely in Go
