@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: online-judge-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - online-judge-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.9-management-alpine
+    container_name: online-judge-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    networks:
+      - online-judge-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: online-judge-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - online-judge-net
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  executor:
+    build: ./executor
+    container_name: online-judge-executor
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASSWORD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - online-judge-net
+
+volumes:
+  postgres_data:
+
+networks:
+  online-judge-net:
+    driver: bridge
