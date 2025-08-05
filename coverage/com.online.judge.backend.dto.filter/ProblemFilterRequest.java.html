@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProblemFilterRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.dto.filter</a> &gt; <span class="el_source">ProblemFilterRequest.java</span></div><h1>ProblemFilterRequest.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.dto.filter;
+
+import com.online.judge.backend.model.shared.ProblemDifficulty;
+import com.online.judge.backend.model.shared.ProblemTag;
+import jakarta.validation.constraints.Min;
+import java.util.List;
+
+/**
+ * Request DTO for filtering problems. This class provides different criterias to filter out
+ * problems.
+ */
+<span class="fc" id="L12">public record ProblemFilterRequest(</span>
+		/**
+		 * List of difficulties to filter by. Problems matching at least one difficulty
+		 * will be returned. If empty or null, no difficulty filtering is applied.
+		 */
+		List&lt;ProblemDifficulty&gt; difficulties,
+
+		/**
+		 * List of tags to filter by. Problems having at least one of these tags
+		 * will be returned. If empty or null, no tag filtering is applied.
+		 */
+		List&lt;ProblemTag&gt; tags,
+
+		/**
+		 * The page number to retrieve (1-based).
+		 */
+		@Min(value = 1, message = &quot;Page number must be at least 1&quot;) int page) {
+
+	public ProblemFilterRequest(List&lt;ProblemDifficulty&gt; difficulties, List&lt;ProblemTag&gt; tags) {
+<span class="nc" id="L31">		this(difficulties, tags, 1);</span>
+<span class="nc" id="L32">	}</span>
+
+	/**
+	 * Checks if any difficulty filters are applied.
+	 */
+	public boolean hasDifficultyFilters() {
+<span class="nc bnc" id="L38" title="All 4 branches missed.">		return difficulties != null &amp;&amp; !difficulties.isEmpty();</span>
+	}
+
+	/**
+	 * Checks if any tag filters are applied.
+	 */
+	public boolean hasTagFilters() {
+<span class="nc bnc" id="L45" title="All 4 branches missed.">		return tags != null &amp;&amp; !tags.isEmpty();</span>
+	}
+
+	/**
+	 * Checks if any filters are applied.
+	 */
+	public boolean hasAnyFilters() {
+<span class="nc bnc" id="L52" title="All 4 branches missed.">		return hasDifficultyFilters() || hasTagFilters();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
