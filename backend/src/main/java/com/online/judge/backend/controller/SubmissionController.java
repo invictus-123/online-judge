@@ -1,5 +1,6 @@
 package com.online.judge.backend.controller;
 
+import com.online.judge.backend.annotation.RateLimit;
 import com.online.judge.backend.dto.filter.SubmissionFilterRequest;
 import com.online.judge.backend.dto.request.SubmitCodeRequest;
 import com.online.judge.backend.dto.response.GetSubmissionByIdResponse;
@@ -88,6 +89,7 @@ public class SubmissionController {
 	 *         error if the user is not authorized to make a submission.
 	 */
 	@PostMapping
+	@RateLimit(apiType = "submit-code", capacity = 10, refillPeriodMinutes = 1)
 	public ResponseEntity<SubmitCodeResponse> submit(@Valid @RequestBody SubmitCodeRequest request) {
 		logger.info("Received request to create a new submission");
 

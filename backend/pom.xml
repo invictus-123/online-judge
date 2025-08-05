@@ -108,6 +108,13 @@
 			<artifactId>spring-boot-starter-amqp</artifactId>
 		</dependency>
 
+		<!-- RATE LIMITING -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j-core</artifactId>
+			<version>8.8.0</version>
+		</dependency>
+
 		<!-- TESTING -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
