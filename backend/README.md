@@ -40,5 +40,5 @@ The following are the main API endpoints provided by the backend:
 ### Submissions
 
 * `GET /api/v1/submissions/list?page={page}`: Get a list of submissions for a given page.
-* `GET /api/v1/submissions/{problemId}`: Get details of a specific submission by its ID.
+* `GET /api/v1/submissions/{submissionId}`: Get details of a specific submission by its ID.
 * `POST /api/v1/submissions`: Make a submission to a problem (authenticated user only).
