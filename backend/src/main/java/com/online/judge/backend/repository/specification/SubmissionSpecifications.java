@@ -45,6 +45,21 @@ public class SubmissionSpecifications {
 	}
 
 	/**
+	 * Creates a specification that filters submissions by multiple problem IDs.
+	 *
+	 * @param problemIds The problem IDs to filter by
+	 * @return Specification for problem ID filtering
+	 */
+	public static Specification<Submission> hasProblemIdIn(List<Long> problemIds) {
+		return (root, query, criteriaBuilder) -> {
+			if (problemIds == null || problemIds.isEmpty()) {
+				return criteriaBuilder.conjunction();
+			}
+			return root.get("problem").get("id").in(problemIds);
+		};
+	}
+
+	/**
 	 * Creates a specification that filters submissions by status.
 	 * Submissions matching any of the provided statuses will be returned.
 	 *

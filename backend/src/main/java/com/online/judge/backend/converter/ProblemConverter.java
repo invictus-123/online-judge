@@ -11,15 +11,24 @@ import com.online.judge.backend.model.Problem;
 import com.online.judge.backend.model.Tag;
 import com.online.judge.backend.model.TestCase;
 import com.online.judge.backend.model.shared.ProblemTag;
+import com.online.judge.backend.model.shared.SolvedStatus;
 import java.util.List;
 
 public class ProblemConverter {
 	public static ProblemSummaryUi toProblemSummaryUi(Problem problem) {
+		return toProblemSummaryUi(problem, SolvedStatus.UNATTEMPTED);
+	}
+
+	public static ProblemSummaryUi toProblemSummaryUi(Problem problem, SolvedStatus solvedStatus) {
 		return new ProblemSummaryUi(
-				problem.getId(), problem.getTitle(), problem.getDifficulty(), listProblemTags(problem));
+				problem.getId(), problem.getTitle(), problem.getDifficulty(), listProblemTags(problem), solvedStatus);
 	}
 
 	public static ProblemDetailsUi toProblemDetailsUi(Problem problem) {
+		return toProblemDetailsUi(problem, SolvedStatus.UNATTEMPTED);
+	}
+
+	public static ProblemDetailsUi toProblemDetailsUi(Problem problem, SolvedStatus solvedStatus) {
 		return new ProblemDetailsUi(
 				problem.getId(),
 				problem.getTitle(),
@@ -28,7 +37,8 @@ public class ProblemConverter {
 				problem.getMemoryLimitMb(),
 				problem.getDifficulty(),
 				listProblemTags(problem),
-				toTestCaseUi(listSampleTestCases(problem)));
+				toTestCaseUi(listSampleTestCases(problem)),
+				solvedStatus);
 	}
 
 	public static Problem toProblemFromCreateProblemRequest(CreateProblemRequest request) {

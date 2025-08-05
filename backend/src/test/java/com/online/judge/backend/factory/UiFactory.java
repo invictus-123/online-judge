@@ -11,11 +11,16 @@ import com.online.judge.backend.model.Submission;
 import com.online.judge.backend.model.Tag;
 import com.online.judge.backend.model.TestCase;
 import com.online.judge.backend.model.User;
+import com.online.judge.backend.model.shared.SolvedStatus;
 import java.util.List;
 
 public class UiFactory {
 
 	public static ProblemDetailsUi createProblemDetailsUi(Problem problem) {
+		return createProblemDetailsUi(problem, SolvedStatus.UNATTEMPTED);
+	}
+
+	public static ProblemDetailsUi createProblemDetailsUi(Problem problem, SolvedStatus solvedStatus) {
 		return new ProblemDetailsUi(
 				problem.getId(),
 				problem.getTitle(),
@@ -24,15 +29,21 @@ public class UiFactory {
 				problem.getMemoryLimitMb(),
 				problem.getDifficulty(),
 				problem.getTags().stream().map(Tag::getTagName).toList(),
-				problem.getTestCases().stream().map(tc -> createTestCaseUi(tc)).toList());
+				problem.getTestCases().stream().map(tc -> createTestCaseUi(tc)).toList(),
+				solvedStatus);
 	}
 
 	public static ProblemSummaryUi createProblemSummaryUi(Problem problem) {
+		return createProblemSummaryUi(problem, SolvedStatus.UNATTEMPTED);
+	}
+
+	public static ProblemSummaryUi createProblemSummaryUi(Problem problem, SolvedStatus solvedStatus) {
 		return new ProblemSummaryUi(
 				problem.getId(),
 				problem.getTitle(),
 				problem.getDifficulty(),
-				problem.getTags().stream().map(Tag::getTagName).toList());
+				problem.getTags().stream().map(Tag::getTagName).toList(),
+				solvedStatus);
 	}
 
 	public static SubmissionDetailsUi createSubmissionDetailsUi(Submission submission) {

@@ -27,10 +27,13 @@ import com.online.judge.backend.model.TestCase;
 import com.online.judge.backend.model.User;
 import com.online.judge.backend.model.shared.ProblemDifficulty;
 import com.online.judge.backend.model.shared.ProblemTag;
+import com.online.judge.backend.model.shared.SolvedStatus;
 import com.online.judge.backend.model.shared.UserRole;
 import com.online.judge.backend.repository.ProblemRepository;
 import com.online.judge.backend.util.UserUtil;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,11 +75,14 @@ class ProblemServiceTest {
 	@Mock
 	private UserUtil userUtil;
 
+	@Mock
+	private SolvedStatusService solvedStatusService;
+
 	private ProblemService problemService;
 
 	@BeforeEach
 	void setUp() {
-		problemService = new ProblemService(problemRepository, userUtil, PAGE_SIZE);
+		problemService = new ProblemService(problemRepository, solvedStatusService, userUtil, PAGE_SIZE);
 	}
 
 	static Stream<Arguments> listProblemsScenarios() {
@@ -180,11 +186,17 @@ class ProblemServiceTest {
 		Page<Problem> problemPage = new PageImpl<>(problems, expectedPageable, problems.size());
 		when(problemRepository.findAll(any(Specification.class), eq(expectedPageable)))
 				.thenReturn(problemPage);
+		when(userUtil.getCurrentAuthenticatedUserOptional()).thenReturn(Optional.empty());
+		List<Long> problemIds = problems.stream().map(Problem::getId).toList();
+		Map<Long, SolvedStatus> solvedStatusMap = new HashMap<>();
+		problemIds.forEach(id -> solvedStatusMap.put(id, SolvedStatus.UNATTEMPTED));
+		when(solvedStatusService.getSolvedStatusForProblems(null, problemIds)).thenReturn(solvedStatusMap);
 
 		List<ProblemSummaryUi> result = problemService.listProblems(filterRequest);
 
 		assertNotNull(result);
 		assertEquals(expectedResultCount, result.size());
+		result.forEach(problem -> assertEquals(SolvedStatus.UNATTEMPTED, problem.solvedStatus()));
 	}
 
 	@Test
@@ -196,6 +208,9 @@ class ProblemServiceTest {
 		TestCase hiddenTestCase = createTestCase(mockProblem, false);
 		mockProblem.setTestCases(List.of(sampleTestCase, hiddenTestCase));
 		when(problemRepository.findById(problemId)).thenReturn(Optional.of(mockProblem));
+		when(userUtil.getCurrentAuthenticatedUserOptional()).thenReturn(Optional.empty());
+		when(solvedStatusService.getSolvedStatus(null, problemId)).thenReturn(SolvedStatus.UNATTEMPTED);
+
 		ProblemDetailsUi expectedProblemDetails = new ProblemDetailsUi(
 				mockProblem.getId(),
 				mockProblem.getTitle(),
@@ -204,7 +219,8 @@ class ProblemServiceTest {
 				mockProblem.getMemoryLimitMb(),
 				mockProblem.getDifficulty(),
 				List.of(ProblemTag.ARRAY, ProblemTag.GREEDY),
-				List.of(createTestCaseUi(sampleTestCase)));
+				List.of(createTestCaseUi(sampleTestCase)),
+				SolvedStatus.UNATTEMPTED);
 
 		ProblemDetailsUi result = problemService.getProblemDetailsById(problemId);
 
