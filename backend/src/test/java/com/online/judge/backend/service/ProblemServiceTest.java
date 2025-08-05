@@ -186,7 +186,7 @@ class ProblemServiceTest {
 		Page<Problem> problemPage = new PageImpl<>(problems, expectedPageable, problems.size());
 		when(problemRepository.findAll(any(Specification.class), eq(expectedPageable)))
 				.thenReturn(problemPage);
-		when(userUtil.getCurrentAuthenticatedUser()).thenReturn(null);
+		when(userUtil.getCurrentAuthenticatedUserOptional()).thenReturn(Optional.empty());
 		List<Long> problemIds = problems.stream().map(Problem::getId).toList();
 		Map<Long, SolvedStatus> solvedStatusMap = new HashMap<>();
 		problemIds.forEach(id -> solvedStatusMap.put(id, SolvedStatus.UNATTEMPTED));
@@ -208,7 +208,7 @@ class ProblemServiceTest {
 		TestCase hiddenTestCase = createTestCase(mockProblem, false);
 		mockProblem.setTestCases(List.of(sampleTestCase, hiddenTestCase));
 		when(problemRepository.findById(problemId)).thenReturn(Optional.of(mockProblem));
-		when(userUtil.getCurrentAuthenticatedUser()).thenReturn(null);
+		when(userUtil.getCurrentAuthenticatedUserOptional()).thenReturn(Optional.empty());
 		when(solvedStatusService.getSolvedStatus(null, problemId)).thenReturn(SolvedStatus.UNATTEMPTED);
 
 		ProblemDetailsUi expectedProblemDetails = new ProblemDetailsUi(

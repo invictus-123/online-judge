@@ -1,9 +1,9 @@
 package com.online.judge.backend.service;
 
+import static com.online.judge.backend.factory.UserFactory.createUser;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static com.online.judge.backend.factory.UserFactory.createUser;
 
 import com.online.judge.backend.model.Problem;
 import com.online.judge.backend.model.Submission;
@@ -13,7 +13,6 @@ import com.online.judge.backend.model.shared.SubmissionStatus;
 import com.online.judge.backend.repository.SubmissionRepository;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

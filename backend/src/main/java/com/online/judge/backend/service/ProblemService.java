@@ -77,7 +77,7 @@ public class ProblemService {
 		List<Problem> problems =
 				problemRepository.findAll(specification, pageable).getContent();
 		List<Long> problemIds = problems.stream().map(Problem::getId).toList();
-		User currentUser = userUtil.getCurrentAuthenticatedUser();
+		User currentUser = userUtil.getCurrentAuthenticatedUserOptional().orElse(null);
 		Map<Long, SolvedStatus> solvedStatusMap =
 				solvedStatusService.getSolvedStatusForProblems(currentUser, problemIds);
 
@@ -104,7 +104,7 @@ public class ProblemService {
 				.map(problem -> {
 					logger.info("Problem found: {}", problem);
 
-					User currentUser = userUtil.getCurrentAuthenticatedUser();
+					User currentUser = userUtil.getCurrentAuthenticatedUserOptional().orElse(null);
 					SolvedStatus solvedStatus = solvedStatusService.getSolvedStatus(currentUser, problemId);
 					return toProblemDetailsUi(problem, solvedStatus);
 				})
