@@ -93,7 +93,8 @@ class ProblemServiceTest {
 								MEDIUM_GREEDY_TREE_PROBLEM,
 								MEDIUM_TREE_PROBLEM),
 						/* expectedResultCount= */ 4),
-				Arguments.of("no filters - no problems exist",
+				Arguments.of(
+						"no filters - no problems exist",
 						/* page= */ 1,
 						/* difficultes= */ null,
 						/* tags= */ null,
@@ -117,10 +118,7 @@ class ProblemServiceTest {
 						/* page= */ 1,
 						/* difficultes= */ List.of(ProblemDifficulty.MEDIUM),
 						/* tags= */ List.of(),
-						/* problems= */ List.of(
-								MEDIUM_ARRAY_PROBLEM,
-								MEDIUM_TREE_PROBLEM,
-								MEDIUM_GREEDY_TREE_PROBLEM),
+						/* problems= */ List.of(MEDIUM_ARRAY_PROBLEM, MEDIUM_TREE_PROBLEM, MEDIUM_GREEDY_TREE_PROBLEM),
 						/* expectedResultCount= */ 3),
 				Arguments.of(
 						"multiple difficulties filter",
@@ -133,7 +131,8 @@ class ProblemServiceTest {
 								MEDIUM_TREE_PROBLEM,
 								MEDIUM_GREEDY_TREE_PROBLEM),
 						/* expectedResultCount= */ 4),
-				Arguments.of("difficulty filter - no matches",
+				Arguments.of(
+						"difficulty filter - no matches",
 						/* page= */ 1,
 						/* difficultes= */ List.of(ProblemDifficulty.HARD),
 						/* tags= */ List.of(),
@@ -141,22 +140,19 @@ class ProblemServiceTest {
 						/* expectedResultCount= */ 0),
 
 				// Tag filtering
-				Arguments.of("single tag filter",
+				Arguments.of(
+						"single tag filter",
 						/* page= */ 1,
 						/* difficultes= */ List.of(),
 						/* tags= */ List.of(ProblemTag.ARRAY),
-						/* problems= */ List.of(
-								EASY_ARRAY_PROBLEM,
-								MEDIUM_ARRAY_PROBLEM),
+						/* problems= */ List.of(EASY_ARRAY_PROBLEM, MEDIUM_ARRAY_PROBLEM),
 						/* expectedResultCount= */ 2),
-				Arguments.of("multiple tags filter",
+				Arguments.of(
+						"multiple tags filter",
 						/* page= */ 1,
 						/* difficultes= */ List.of(),
 						/* tags= */ List.of(ProblemTag.ARRAY, ProblemTag.GREEDY),
-						/* problems= */ List.of(
-								EASY_ARRAY_PROBLEM,
-								MEDIUM_ARRAY_PROBLEM,
-								MEDIUM_GREEDY_TREE_PROBLEM),
+						/* problems= */ List.of(EASY_ARRAY_PROBLEM, MEDIUM_ARRAY_PROBLEM, MEDIUM_GREEDY_TREE_PROBLEM),
 						/* expectedResultCount= */ 3),
 
 				// Combined filtering
@@ -165,11 +161,10 @@ class ProblemServiceTest {
 						/* page= */ 1,
 						/* difficultes= */ List.of(ProblemDifficulty.MEDIUM),
 						/* tags= */ List.of(ProblemTag.TREE),
-						/* problems= */ List.of(
-								MEDIUM_GREEDY_TREE_PROBLEM,
-								MEDIUM_TREE_PROBLEM),
+						/* problems= */ List.of(MEDIUM_GREEDY_TREE_PROBLEM, MEDIUM_TREE_PROBLEM),
 						/* expectedResultCount= */ 2));
 	}
+
 	@ParameterizedTest(name = "listProblems - {0}")
 	@MethodSource("listProblemsScenarios")
 	void listProblems_allScenarios(
