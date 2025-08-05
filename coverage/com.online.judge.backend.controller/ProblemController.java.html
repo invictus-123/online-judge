@@ -46,8 +46,8 @@ public class ProblemController {
 	@GetMapping(&quot;/list&quot;)
 	public ResponseEntity&lt;ListProblemsResponse&gt; listProblems(
 			@RequestParam(defaultValue = &quot;1&quot;) int page,
-			@RequestParam(required = false) List&lt;ProblemDifficulty&gt; difficulties,
-			@RequestParam(required = false) List&lt;ProblemTag&gt; tags) {
+			@RequestParam(required = false, name = &quot;difficulty&quot;) List&lt;ProblemDifficulty&gt; difficulties,
+			@RequestParam(required = false, name = &quot;tag&quot;) List&lt;ProblemTag&gt; tags) {
 <span class="fc" id="L51">		ProblemFilterRequest filterRequest = new ProblemFilterRequest(difficulties, tags, page);</span>
 <span class="fc" id="L52">		logger.info(&quot;Received call to fetch problems with filters={}&quot;, filterRequest);</span>
 

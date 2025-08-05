@@ -3,8 +3,14 @@
 import static com.online.judge.backend.converter.SubmissionConverter.toSubmissionDetailsUi;
 import static com.online.judge.backend.converter.SubmissionConverter.toSubmissionFromRequest;
 import static com.online.judge.backend.converter.SubmissionConverter.toSubmissionMessage;
+import static com.online.judge.backend.repository.specification.SubmissionSpecifications.and;
+import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasLanguageIn;
+import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasProblem;
+import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasStatusIn;
+import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasUser;
 
 import com.online.judge.backend.converter.SubmissionConverter;
+import com.online.judge.backend.dto.filter.SubmissionFilterRequest;
 import com.online.judge.backend.dto.request.SubmitCodeRequest;
 import com.online.judge.backend.dto.ui.SubmissionDetailsUi;
 import com.online.judge.backend.dto.ui.SubmissionSummaryUi;
@@ -25,13 +31,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Service class for managing submissions. */
 @Service
 public class SubmissionService {
-<span class="fc" id="L34">	private static final Logger logger = LoggerFactory.getLogger(SubmissionService.class);</span>
+<span class="fc" id="L41">	private static final Logger logger = LoggerFactory.getLogger(SubmissionService.class);</span>
 
 	private final ProblemRepository problemRepository;
 	private final SubmissionRepository submissionRepository;
@@ -44,31 +51,53 @@ public class SubmissionService {
 			SubmissionRepository submissionRepository,
 			SubmissionPublisher submissionPublisher,
 			UserUtil userUtil,
-<span class="fc" id="L47">			@Value(&quot;${submissions.list.page-size:50}&quot;) int pageSize) {</span>
-<span class="fc" id="L48">		this.problemRepository = problemRepository;</span>
-<span class="fc" id="L49">		this.submissionRepository = submissionRepository;</span>
-<span class="fc" id="L50">		this.submissionPublisher = submissionPublisher;</span>
-<span class="fc" id="L51">		this.userUtil = userUtil;</span>
-<span class="fc" id="L52">		this.pageSize = pageSize;</span>
-<span class="fc" id="L53">	}</span>
+<span class="fc" id="L54">			@Value(&quot;${submissions.list.page-size:50}&quot;) int pageSize) {</span>
+<span class="fc" id="L55">		this.problemRepository = problemRepository;</span>
+<span class="fc" id="L56">		this.submissionRepository = submissionRepository;</span>
+<span class="fc" id="L57">		this.submissionPublisher = submissionPublisher;</span>
+<span class="fc" id="L58">		this.userUtil = userUtil;</span>
+<span class="fc" id="L59">		this.pageSize = pageSize;</span>
+<span class="fc" id="L60">	}</span>
 
 	/**
-	 * Retrieves a paginated list of all submissions, sorted by the submission time in descending
+	 * Retrieves a paginated list of submissions with optional filtering, sorted by the submission time in descending
 	 * order.
 	 *
-	 * @param page
-	 *            The page number (1-based).
-	 * @return A List&lt;SubmissionSummaryUi&gt; containing the paginated list of submissions.
+	 * @param filterRequest The filter request containing filtering criteria and page information
+	 * @return A List&lt;SubmissionSummaryUi&gt; containing the paginated list of submissions matching the filters
 	 */
 	@Transactional(readOnly = true)
-	public List&lt;SubmissionSummaryUi&gt; listSubmissions(int page) {
-<span class="fc" id="L65">		logger.info(&quot;Fetching all submissions for page {}&quot;, page);</span>
+	public List&lt;SubmissionSummaryUi&gt; listSubmissions(SubmissionFilterRequest filterRequest) {
+<span class="fc" id="L71">		logger.info(</span>
+				&quot;Fetching submissions with filters: page={}, onlyMe={}, problemId={}, statuses={}, languages={}&quot;,
+<span class="fc" id="L73">				filterRequest.page(),</span>
+<span class="fc" id="L74">				filterRequest.onlyMe(),</span>
+<span class="fc" id="L75">				filterRequest.problemId(),</span>
+<span class="fc" id="L76">				filterRequest.statuses(),</span>
+<span class="fc" id="L77">				filterRequest.languages());</span>
 
-<span class="fc" id="L67">		Pageable pageable =</span>
-<span class="fc" id="L68">				PageRequest.of(page - 1, pageSize, Sort.by(&quot;submittedAt&quot;).descending());</span>
-<span class="fc" id="L69">		return submissionRepository.findAll(pageable).getContent().stream()</span>
-<span class="fc" id="L70">				.map(SubmissionConverter::toSubmissionSummaryUi)</span>
-<span class="fc" id="L71">				.toList();</span>
+<span class="fc" id="L79">		User currentUser = null;</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">		if (Boolean.TRUE.equals(filterRequest.onlyMe())) {</span>
+			try {
+<span class="fc" id="L82">				currentUser = userUtil.getCurrentAuthenticatedUser();</span>
+<span class="fc" id="L83">				logger.debug(&quot;Filtering submissions for user: {}&quot;, currentUser.getHandle());</span>
+<span class="fc" id="L84">			} catch (Exception e) {</span>
+<span class="fc" id="L85">				logger.debug(&quot;No authenticated user found, ignoring 'onlyMe' filter&quot;);</span>
+<span class="fc" id="L86">			}</span>
+		}
+
+<span class="fc" id="L89">		Specification&lt;Submission&gt; specification = and(</span>
+<span class="fc" id="L90">				hasUser(currentUser),</span>
+<span class="fc" id="L91">				hasProblem(filterRequest.problemId()),</span>
+<span class="fc" id="L92">				hasStatusIn(filterRequest.statuses()),</span>
+<span class="fc" id="L93">				hasLanguageIn(filterRequest.languages()));</span>
+
+<span class="fc" id="L95">		Pageable pageable = PageRequest.of(</span>
+<span class="fc" id="L96">				filterRequest.page() - 1, pageSize, Sort.by(&quot;submittedAt&quot;).descending());</span>
+
+<span class="fc" id="L98">		return submissionRepository.findAll(specification, pageable).getContent().stream()</span>
+<span class="fc" id="L99">				.map(SubmissionConverter::toSubmissionSummaryUi)</span>
+<span class="fc" id="L100">				.toList();</span>
 	}
 
 	/**
@@ -81,15 +110,15 @@ public class SubmissionService {
 	 */
 	@Transactional(readOnly = true)
 	public SubmissionDetailsUi getSubmissionDetailsById(Long submissionId) {
-<span class="fc" id="L84">		logger.info(&quot;Fetching details for submission with ID: {}&quot;, submissionId);</span>
+<span class="fc" id="L113">		logger.info(&quot;Fetching details for submission with ID: {}&quot;, submissionId);</span>
 
-<span class="fc" id="L86">		return submissionRepository</span>
-<span class="fc" id="L87">				.findById(submissionId)</span>
-<span class="fc" id="L88">				.map(submission -&gt; {</span>
-<span class="fc" id="L89">					logger.info(&quot;Submission found: {}&quot;, submission);</span>
-<span class="fc" id="L90">					return toSubmissionDetailsUi(submission);</span>
+<span class="fc" id="L115">		return submissionRepository</span>
+<span class="fc" id="L116">				.findById(submissionId)</span>
+<span class="fc" id="L117">				.map(submission -&gt; {</span>
+<span class="fc" id="L118">					logger.info(&quot;Submission found: {}&quot;, submission);</span>
+<span class="fc" id="L119">					return toSubmissionDetailsUi(submission);</span>
 				})
-<span class="fc" id="L92">				.orElseThrow(() -&gt; toSubmissionNotFoundException(submissionId));</span>
+<span class="fc" id="L121">				.orElseThrow(() -&gt; toSubmissionNotFoundException(submissionId));</span>
 	}
 
 	/**
@@ -101,25 +130,25 @@ public class SubmissionService {
 	 */
 	@Transactional
 	public SubmissionDetailsUi submitCode(SubmitCodeRequest request) {
-<span class="fc" id="L104">		User currentUser = userUtil.getCurrentAuthenticatedUser();</span>
-<span class="fc" id="L105">		Problem problem = problemRepository.findById(request.problemId()).orElseThrow(() -&gt; {</span>
-<span class="fc" id="L106">			logger.error(&quot;Could not submit code, problem with ID {} not found&quot;, request.problemId());</span>
-<span class="fc" id="L107">			return new ProblemNotFoundException(&quot;Problem with ID &quot; + request.problemId() + &quot; not found&quot;);</span>
+<span class="fc" id="L133">		User currentUser = userUtil.getCurrentAuthenticatedUser();</span>
+<span class="fc" id="L134">		Problem problem = problemRepository.findById(request.problemId()).orElseThrow(() -&gt; {</span>
+<span class="fc" id="L135">			logger.error(&quot;Could not submit code, problem with ID {} not found&quot;, request.problemId());</span>
+<span class="fc" id="L136">			return new ProblemNotFoundException(&quot;Problem with ID &quot; + request.problemId() + &quot; not found&quot;);</span>
 		});
 
-<span class="fc" id="L110">		Submission submission = toSubmissionFromRequest(request);</span>
-<span class="fc" id="L111">		submission.setProblem(problem);</span>
-<span class="fc" id="L112">		submission.setUser(currentUser);</span>
-<span class="fc" id="L113">		Submission savedSubmission = submissionRepository.save(submission);</span>
-<span class="fc" id="L114">		logger.info(</span>
+<span class="fc" id="L139">		Submission submission = toSubmissionFromRequest(request);</span>
+<span class="fc" id="L140">		submission.setProblem(problem);</span>
+<span class="fc" id="L141">		submission.setUser(currentUser);</span>
+<span class="fc" id="L142">		Submission savedSubmission = submissionRepository.save(submission);</span>
+<span class="fc" id="L143">		logger.info(</span>
 				&quot;Code submitted with ID: {} for problem: {} by user: {}&quot;,
-<span class="fc" id="L116">				savedSubmission.getId(),</span>
-<span class="fc" id="L117">				problem.getId(),</span>
-<span class="fc" id="L118">				currentUser.getHandle());</span>
+<span class="fc" id="L145">				savedSubmission.getId(),</span>
+<span class="fc" id="L146">				problem.getId(),</span>
+<span class="fc" id="L147">				currentUser.getHandle());</span>
 
-<span class="fc" id="L120">		enqueueSubmission(savedSubmission);</span>
+<span class="fc" id="L149">		enqueueSubmission(savedSubmission);</span>
 
-<span class="fc" id="L122">		return toSubmissionDetailsUi(savedSubmission);</span>
+<span class="fc" id="L151">		return toSubmissionDetailsUi(savedSubmission);</span>
 	}
 
 	/**
@@ -132,14 +161,14 @@ public class SubmissionService {
 	 */
 	@Transactional
 	public void updateStatus(Long submissionId, SubmissionStatus status) {
-<span class="fc" id="L135">		Submission submission = submissionRepository</span>
-<span class="fc" id="L136">				.findById(submissionId)</span>
-<span class="pc" id="L137">				.orElseThrow(() -&gt; toSubmissionNotFoundException(submissionId));</span>
+<span class="fc" id="L164">		Submission submission = submissionRepository</span>
+<span class="fc" id="L165">				.findById(submissionId)</span>
+<span class="pc" id="L166">				.orElseThrow(() -&gt; toSubmissionNotFoundException(submissionId));</span>
 
-<span class="fc" id="L139">		logger.info(&quot;Updating status for submission {} from {} to {}.&quot;, submissionId, submission.getStatus(), status);</span>
-<span class="fc" id="L140">		submission.setStatus(status);</span>
-<span class="fc" id="L141">		submissionRepository.save(submission);</span>
-<span class="fc" id="L142">	}</span>
+<span class="fc" id="L168">		logger.info(&quot;Updating status for submission {} from {} to {}.&quot;, submissionId, submission.getStatus(), status);</span>
+<span class="fc" id="L169">		submission.setStatus(status);</span>
+<span class="fc" id="L170">		submissionRepository.save(submission);</span>
+<span class="fc" id="L171">	}</span>
 
 	/**
 	 * Updates the time taken and memory used by the overall submission.
@@ -153,27 +182,27 @@ public class SubmissionService {
 	 */
 	@Transactional
 	public void updateTimeTakenAndMemoryUsed(Long submissionId, Double timeTaken, Integer memoryUsed) {
-<span class="fc" id="L156">		Submission submission = submissionRepository</span>
-<span class="fc" id="L157">				.findById(submissionId)</span>
-<span class="pc" id="L158">				.orElseThrow(() -&gt; toSubmissionNotFoundException(submissionId));</span>
+<span class="fc" id="L185">		Submission submission = submissionRepository</span>
+<span class="fc" id="L186">				.findById(submissionId)</span>
+<span class="pc" id="L187">				.orElseThrow(() -&gt; toSubmissionNotFoundException(submissionId));</span>
 
-<span class="fc" id="L160">		logger.info(</span>
+<span class="fc" id="L189">		logger.info(</span>
 				&quot;Update time taken and memory used for submission {} to {}s and {}mb respectively.&quot;,
 				submissionId,
 				timeTaken,
 				memoryUsed);
-<span class="fc" id="L165">		submission.setExecutionTimeSeconds(timeTaken);</span>
-<span class="fc" id="L166">		submission.setMemoryUsedMb(memoryUsed);</span>
-<span class="fc" id="L167">		submissionRepository.save(submission);</span>
-<span class="fc" id="L168">	}</span>
+<span class="fc" id="L194">		submission.setExecutionTimeSeconds(timeTaken);</span>
+<span class="fc" id="L195">		submission.setMemoryUsedMb(memoryUsed);</span>
+<span class="fc" id="L196">		submissionRepository.save(submission);</span>
+<span class="fc" id="L197">	}</span>
 
 	private static SubmissionNotFoundException toSubmissionNotFoundException(Long submissionId) {
-<span class="fc" id="L171">		logger.error(&quot;Submission with ID {} not found&quot;, submissionId);</span>
-<span class="fc" id="L172">		return new SubmissionNotFoundException(&quot;Submission with ID &quot; + submissionId + &quot; not found&quot;);</span>
+<span class="fc" id="L200">		logger.error(&quot;Submission with ID {} not found&quot;, submissionId);</span>
+<span class="fc" id="L201">		return new SubmissionNotFoundException(&quot;Submission with ID &quot; + submissionId + &quot; not found&quot;);</span>
 	}
 
 	private void enqueueSubmission(Submission submission) {
-<span class="fc" id="L176">		submissionPublisher.sendSubmission(toSubmissionMessage(submission));</span>
-<span class="fc" id="L177">	}</span>
+<span class="fc" id="L205">		submissionPublisher.sendSubmission(toSubmissionMessage(submission));</span>
+<span class="fc" id="L206">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

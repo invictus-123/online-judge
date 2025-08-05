@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SubmissionSpecifications.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.repository.specification</a> &gt; <span class="el_source">SubmissionSpecifications.java</span></div><h1>SubmissionSpecifications.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.repository.specification;
+
+import com.online.judge.backend.model.Submission;
+import com.online.judge.backend.model.User;
+import com.online.judge.backend.model.shared.SubmissionLanguage;
+import com.online.judge.backend.model.shared.SubmissionStatus;
+import java.util.List;
+import org.springframework.data.jpa.domain.Specification;
+
+/**
+ * Specifications for building dynamic queries for the Submission entity.
+ */
+public class SubmissionSpecifications {
+
+	/**
+	 * Creates a specification that filters submissions by user.
+	 * Only submissions by the specified user will be returned.
+	 *
+	 * @param user The user to filter by
+	 * @return Specification for user filtering
+	 */
+	public static Specification&lt;Submission&gt; hasUser(User user) {
+<span class="fc" id="L23">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="pc bpc" id="L24" title="1 of 2 branches missed.">			if (user == null) {</span>
+<span class="fc" id="L25">				return criteriaBuilder.conjunction();</span>
+			}
+<span class="nc" id="L27">			return criteriaBuilder.equal(root.get(&quot;user&quot;), user);</span>
+		};
+	}
+
+	/**
+	 * Creates a specification that filters submissions by problem ID.
+	 * Only submissions for the specified problem will be returned.
+	 *
+	 * @param problemId The problem ID to filter by
+	 * @return Specification for problem filtering
+	 */
+	public static Specification&lt;Submission&gt; hasProblem(Long problemId) {
+<span class="fc" id="L39">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="pc bpc" id="L40" title="1 of 2 branches missed.">			if (problemId == null) {</span>
+<span class="fc" id="L41">				return criteriaBuilder.conjunction();</span>
+			}
+<span class="nc" id="L43">			return criteriaBuilder.equal(root.get(&quot;problem&quot;).get(&quot;id&quot;), problemId);</span>
+		};
+	}
+
+	/**
+	 * Creates a specification that filters submissions by status.
+	 * Submissions matching any of the provided statuses will be returned.
+	 *
+	 * @param statuses List of statuses to filter by
+	 * @return Specification for status filtering
+	 */
+	public static Specification&lt;Submission&gt; hasStatusIn(List&lt;SubmissionStatus&gt; statuses) {
+<span class="fc" id="L55">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="pc bpc" id="L56" title="3 of 4 branches missed.">			if (statuses == null || statuses.isEmpty()) {</span>
+<span class="fc" id="L57">				return criteriaBuilder.conjunction();</span>
+			}
+<span class="nc" id="L59">			return root.get(&quot;status&quot;).in(statuses);</span>
+		};
+	}
+
+	/**
+	 * Creates a specification that filters submissions by programming language.
+	 * Submissions matching any of the provided languages will be returned.
+	 *
+	 * @param languages List of languages to filter by
+	 * @return Specification for language filtering
+	 */
+	public static Specification&lt;Submission&gt; hasLanguageIn(List&lt;SubmissionLanguage&gt; languages) {
+<span class="fc" id="L71">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="pc bpc" id="L72" title="3 of 4 branches missed.">			if (languages == null || languages.isEmpty()) {</span>
+<span class="fc" id="L73">				return criteriaBuilder.conjunction();</span>
+			}
+<span class="nc" id="L75">			return root.get(&quot;language&quot;).in(languages);</span>
+		};
+	}
+
+	/**
+	 * Combines multiple specifications using AND logic.
+	 * This method provides a convenient way to combine multiple filter specifications.
+	 *
+	 * @param specifications Variable number of specifications to combine
+	 * @return Combined specification
+	 */
+	@SafeVarargs
+	public static Specification&lt;Submission&gt; and(Specification&lt;Submission&gt;... specifications) {
+<span class="fc" id="L88">		Specification&lt;Submission&gt; result = null;</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">		for (Specification&lt;Submission&gt; spec : specifications) {</span>
+<span class="fc bfc" id="L90" title="All 2 branches covered.">			if (result == null) {</span>
+<span class="fc" id="L91">				result = spec;</span>
+			} else {
+<span class="fc" id="L93">				result = result.and(spec);</span>
+			}
+		}
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">		return result != null ? result : (root, query, criteriaBuilder) -&gt; criteriaBuilder.conjunction();</span>
+	}
+
+	private SubmissionSpecifications() {
+		// Prevent instantiation
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

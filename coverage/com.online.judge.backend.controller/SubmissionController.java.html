@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SubmissionController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.controller</a> &gt; <span class="el_source">SubmissionController.java</span></div><h1>SubmissionController.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.controller;
 
+import com.online.judge.backend.dto.filter.SubmissionFilterRequest;
 import com.online.judge.backend.dto.request.SubmitCodeRequest;
 import com.online.judge.backend.dto.response.GetSubmissionByIdResponse;
 import com.online.judge.backend.dto.response.ListSubmissionsResponse;
 import com.online.judge.backend.dto.response.SubmitCodeResponse;
+import com.online.judge.backend.model.shared.SubmissionLanguage;
+import com.online.judge.backend.model.shared.SubmissionStatus;
 import com.online.judge.backend.service.SubmissionService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -22,28 +26,40 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(&quot;/api/v1/submissions&quot;)
 public class SubmissionController {
-<span class="fc" id="L25">	private static final Logger logger = LoggerFactory.getLogger(SubmissionController.class);</span>
+<span class="fc" id="L29">	private static final Logger logger = LoggerFactory.getLogger(SubmissionController.class);</span>
 
 	private final SubmissionService submissionService;
 
-<span class="fc" id="L29">	public SubmissionController(SubmissionService submissionService) {</span>
-<span class="fc" id="L30">		this.submissionService = submissionService;</span>
-<span class="fc" id="L31">	}</span>
+<span class="fc" id="L33">	public SubmissionController(SubmissionService submissionService) {</span>
+<span class="fc" id="L34">		this.submissionService = submissionService;</span>
+<span class="fc" id="L35">	}</span>
 
 	/**
-	 * Handles GET requests to fetch a list of all submissions with pagination, sorted by submission
-	 * date in descending order.
+	 * Handles GET requests to fetch a list of submissions with optional filtering and pagination,
+	 * sorted by submission date in descending order.
 	 *
-	 * @param page
-	 *            The page number to retrieve (default is 1).
-	 * @return A ResponseEntity containing a paginated list of submissions.
+	 * @param page The page number to retrieve (default is 1).
+	 * @param onlyMe Filter to show only submissions by the current user (optional).
+	 * @param problemId Filter submissions by problem ID (optional).
+	 * @param statuses Filter submissions by status (optional).
+	 * @param languages Filter submissions by programming language (optional).
+	 * @return A ResponseEntity containing a paginated list of submissions matching the filters.
 	 */
 	@GetMapping(&quot;/list&quot;)
-	public ResponseEntity&lt;ListSubmissionsResponse&gt; listSubmissions(@RequestParam(defaultValue = &quot;1&quot;) int page) {
-<span class="fc" id="L43">		logger.info(&quot;Received call to fetch all submissions with pagination: page={}&quot;, page);</span>
+	public ResponseEntity&lt;ListSubmissionsResponse&gt; listSubmissions(
+			@RequestParam(defaultValue = &quot;1&quot;) int page,
+			@RequestParam(required = false) Boolean onlyMe,
+			@RequestParam(required = false) Long problemId,
+			@RequestParam(required = false, name = &quot;status&quot;) List&lt;SubmissionStatus&gt; statuses,
+			@RequestParam(required = false, name = &quot;language&quot;) List&lt;SubmissionLanguage&gt; languages) {
 
-<span class="fc" id="L45">		ListSubmissionsResponse response = new ListSubmissionsResponse(submissionService.listSubmissions(page));</span>
-<span class="fc" id="L46">		return ResponseEntity.ok(response);</span>
+<span class="fc" id="L56">		SubmissionFilterRequest filterRequest =</span>
+				new SubmissionFilterRequest(onlyMe, problemId, statuses, languages, page);
+<span class="fc" id="L58">		logger.info(&quot;Received call to fetch submissions with filters={}&quot;, filterRequest);</span>
+
+<span class="fc" id="L60">		ListSubmissionsResponse response =</span>
+<span class="fc" id="L61">				new ListSubmissionsResponse(submissionService.listSubmissions(filterRequest));</span>
+<span class="fc" id="L62">		return ResponseEntity.ok(response);</span>
 	}
 
 	/**
@@ -56,11 +72,11 @@ public class SubmissionController {
 	 */
 	@GetMapping(&quot;/{id}&quot;)
 	public ResponseEntity&lt;GetSubmissionByIdResponse&gt; getSubmissionById(@PathVariable Long id) {
-<span class="fc" id="L59">		logger.info(&quot;Received call to fetch submission with ID {}&quot;, id);</span>
+<span class="fc" id="L75">		logger.info(&quot;Received call to fetch submission with ID {}&quot;, id);</span>
 
-<span class="fc" id="L61">		GetSubmissionByIdResponse response =</span>
-<span class="fc" id="L62">				new GetSubmissionByIdResponse(submissionService.getSubmissionDetailsById(id));</span>
-<span class="fc" id="L63">		return ResponseEntity.ok(response);</span>
+<span class="fc" id="L77">		GetSubmissionByIdResponse response =</span>
+<span class="fc" id="L78">				new GetSubmissionByIdResponse(submissionService.getSubmissionDetailsById(id));</span>
+<span class="fc" id="L79">		return ResponseEntity.ok(response);</span>
 	}
 
 	/**
@@ -73,10 +89,10 @@ public class SubmissionController {
 	 */
 	@PostMapping
 	public ResponseEntity&lt;SubmitCodeResponse&gt; submit(@Valid @RequestBody SubmitCodeRequest request) {
-<span class="fc" id="L76">		logger.info(&quot;Received request to create a new submission&quot;);</span>
+<span class="fc" id="L92">		logger.info(&quot;Received request to create a new submission&quot;);</span>
 
-<span class="fc" id="L78">		SubmitCodeResponse response = new SubmitCodeResponse(submissionService.submitCode(request));</span>
-<span class="fc" id="L79">		return new ResponseEntity&lt;&gt;(response, HttpStatus.CREATED);</span>
+<span class="fc" id="L94">		SubmitCodeResponse response = new SubmitCodeResponse(submissionService.submitCode(request));</span>
+<span class="fc" id="L95">		return new ResponseEntity&lt;&gt;(response, HttpStatus.CREATED);</span>
 	}
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -2,10 +2,11 @@ GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_
 backend,com.online.judge.backend.service,CustomUserDetailsService,0,21,0,0,0,6,0,3,0,3
 backend,com.online.judge.backend.service,TestCaseResultService,32,13,0,0,8,5,3,2,3,2
 backend,com.online.judge.backend.service,ProblemService,0,158,0,2,0,36,0,8,0,7
-backend,com.online.judge.backend.service,SubmissionService,6,234,0,0,0,54,2,12,2,12
+backend,com.online.judge.backend.service,SubmissionService,6,310,0,2,0,71,2,13,2,12
 backend,com.online.judge.backend.service,UserService,0,84,0,4,0,21,0,6,0,4
 backend,com.online.judge.backend.model,User,0,22,0,0,0,7,0,7,0,7
 backend,com.online.judge.backend.dto.filter,ProblemFilterRequest,38,12,12,0,5,1,10,1,4,1
+backend,com.online.judge.backend.dto.filter,SubmissionFilterRequest,0,18,0,0,0,1,0,1,0,1
 backend,com.online.judge.backend,BackendApplication,5,3,0,0,2,1,1,1,1,1
 backend,com.online.judge.backend.util,UserUtil,10,22,3,3,2,6,3,2,0,2
 backend,com.online.judge.backend.util,JwtUtil,1,94,2,2,0,23,2,10,0,10
@@ -23,6 +24,7 @@ backend,com.online.judge.backend.dto.response,CreateProblemResponse,0,6,0,0,0,1,
 backend,com.online.judge.backend.dto.response,GetProblemByIdResponse,0,6,0,0,0,1,0,1,0,1
 backend,com.online.judge.backend.dto.response,ListProblemsResponse,0,6,0,0,0,1,0,1,0,1
 backend,com.online.judge.backend.repository.specification,ProblemSpecifications,31,48,7,7,4,12,6,7,1,5
+backend,com.online.judge.backend.repository.specification,SubmissionSpecifications,38,64,9,9,4,18,8,11,1,9
 backend,com.online.judge.backend.exception,UserNotAuthorizedException,0,4,0,0,0,2,0,1,0,1
 backend,com.online.judge.backend.exception,ProblemNotFoundException,0,4,0,0,0,2,0,1,0,1
 backend,com.online.judge.backend.exception,UserAlreadyExistsException,0,4,0,0,0,2,0,1,0,1
@@ -39,7 +41,7 @@ backend,com.online.judge.backend.model.shared,ProblemTag,0,39,0,0,0,7,0,1,0,1
 backend,com.online.judge.backend.model.shared,SubmissionStatus,0,45,0,0,0,8,0,1,0,1
 backend,com.online.judge.backend.controller,AuthController,0,123,0,2,0,31,0,6,0,5
 backend,com.online.judge.backend.controller,ProblemController,0,65,0,0,0,14,0,5,0,5
-backend,com.online.judge.backend.controller,SubmissionController,0,58,0,0,0,14,0,5,0,5
+backend,com.online.judge.backend.controller,SubmissionController,0,66,0,0,0,16,0,5,0,5
 backend,com.online.judge.backend.dto.ui,UserSummaryUi,0,6,0,0,0,1,0,1,0,1
 backend,com.online.judge.backend.dto.ui,SubmissionDetailsUi,0,33,0,0,0,1,0,1,0,1
 backend,com.online.judge.backend.dto.ui,TestCaseUi,0,12,0,0,0,1,0,1,0,1

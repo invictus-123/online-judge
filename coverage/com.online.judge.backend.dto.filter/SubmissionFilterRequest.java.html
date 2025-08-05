@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SubmissionFilterRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.dto.filter</a> &gt; <span class="el_source">SubmissionFilterRequest.java</span></div><h1>SubmissionFilterRequest.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.dto.filter;
+
+import com.online.judge.backend.model.shared.SubmissionLanguage;
+import com.online.judge.backend.model.shared.SubmissionStatus;
+import jakarta.validation.constraints.Min;
+import java.util.List;
+
+/**
+ * DTO for filtering submissions with optional criteria. This class provides different criterias to 
+ * filter out submissions. All filter parameters are optional - null or empty lists are treated
+ * as &quot;no filter applied&quot;.
+ */
+<span class="fc" id="L13">public record SubmissionFilterRequest(</span>
+		/**
+		 * Filter to show only submissions by the current user.
+		 * If true, only submissions by the authenticated user are returned.
+		 * If false or null, submissions by all users are returned.
+		 * If no user is authenticated and this filter is true, it will be ignored.
+		 */
+		Boolean onlyMe,
+
+		/**
+		 * Filter submissions by problem ID.
+		 * If specified, only submissions for this problem are returned.
+		 */
+		Long problemId,
+
+		/**
+		 * Filter submissions by status.
+		 * Submissions matching any of the provided statuses will be returned.
+		 * If null or empty, no status filtering is applied.
+		 */
+		List&lt;SubmissionStatus&gt; statuses,
+
+		/**
+		 * Filter submissions by programming language.
+		 * Submissions matching any of the provided languages will be returned.
+		 * If null or empty, no language filtering is applied.
+		 */
+		List&lt;SubmissionLanguage&gt; languages,
+
+		/**
+		 * The page number for pagination (1-based).
+		 * Must be at least 1.
+		 */
+		@Min(value = 1, message = &quot;Page number must be at least 1&quot;) int page) {}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
