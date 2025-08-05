@@ -33,7 +33,13 @@ import org.hibernate.annotations.CreationTimestamp;
 @Entity
 @Table(
 		name = "submissions",
-		indexes = {@Index(name = "idx_submission_submitted_at", columnList = "submittedAt")})
+		indexes = {
+			@Index(name = "idx_submission_submitted_at", columnList = "submittedAt"),
+			@Index(name = "idx_submission_user_submitted_at", columnList = "user_id,submittedAt"),
+			@Index(name = "idx_submission_problem_submitted_at", columnList = "problem_id,submittedAt"),
+			@Index(name = "idx_submission_status_submitted_at", columnList = "status,submittedAt"),
+			@Index(name = "idx_submission_language_submitted_at", columnList = "language,submittedAt"),
+		})
 public class Submission {
 
 	/** The primary key for the submissions table. */
