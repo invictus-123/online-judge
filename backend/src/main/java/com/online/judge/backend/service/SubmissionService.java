@@ -76,7 +76,6 @@ public class SubmissionService {
 				filterRequest.statuses(),
 				filterRequest.languages());
 
-		// Determine the user filter
 		User currentUser = null;
 		if (Boolean.TRUE.equals(filterRequest.onlyMe())) {
 			try {
@@ -87,7 +86,6 @@ public class SubmissionService {
 			}
 		}
 
-		// Build the dynamic query specification
 		Specification<Submission> specification = and(
 				hasUser(currentUser),
 				hasProblem(filterRequest.problemId()),
