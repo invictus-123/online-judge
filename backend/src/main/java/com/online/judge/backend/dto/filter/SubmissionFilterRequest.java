@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Min;
 import java.util.List;
 
 /**
- * DTO for filtering submissions with optional criteria. This class provides different criterias to 
+ * DTO for filtering submissions with optional criteria. This class provides different criterias to
  * filter out submissions. All filter parameters are optional - null or empty lists are treated
  * as "no filter applied".
  */

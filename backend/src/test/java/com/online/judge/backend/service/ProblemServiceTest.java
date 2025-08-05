@@ -9,8 +9,8 @@ import static com.online.judge.backend.factory.UserFactory.createUser;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -58,6 +58,13 @@ class ProblemServiceTest {
 	private static final int MEMORY_LIMIT = 256;
 	private static final ProblemDifficulty PROBLEM_DIFFICULTY = ProblemDifficulty.EASY;
 	private static final List<ProblemTag> PROBLEM_TAGS = List.of(ProblemTag.ARRAY, ProblemTag.GREEDY);
+	private static final Problem EASY_ARRAY_PROBLEM = createProblem(ProblemDifficulty.EASY, List.of(ProblemTag.ARRAY));
+	private static final Problem MEDIUM_ARRAY_PROBLEM =
+			createProblem(ProblemDifficulty.MEDIUM, List.of(ProblemTag.ARRAY));
+	private static final Problem MEDIUM_GREEDY_TREE_PROBLEM =
+			createProblem(ProblemDifficulty.HARD, List.of(ProblemTag.GREEDY, ProblemTag.TREE));
+	private static final Problem MEDIUM_TREE_PROBLEM =
+			createProblem(ProblemDifficulty.MEDIUM, List.of(ProblemTag.TREE));
 
 	@Mock
 	private ProblemRepository problemRepository;
@@ -70,6 +77,119 @@ class ProblemServiceTest {
 	@BeforeEach
 	void setUp() {
 		problemService = new ProblemService(problemRepository, userUtil, PAGE_SIZE);
+	}
+
+	static Stream<Arguments> listProblemsScenarios() {
+		return Stream.of(
+				// Basic scenarios - no filters
+				Arguments.of(
+						"no filters - problems exist",
+						/* page= */ 1,
+						/* difficultes= */ null,
+						/* tags= */ null,
+						/* problems= */ List.of(
+								EASY_ARRAY_PROBLEM,
+								MEDIUM_ARRAY_PROBLEM,
+								MEDIUM_GREEDY_TREE_PROBLEM,
+								MEDIUM_TREE_PROBLEM),
+						/* expectedResultCount= */ 4),
+				Arguments.of("no filters - no problems exist",
+						/* page= */ 1,
+						/* difficultes= */ null,
+						/* tags= */ null,
+						/* problems= */ List.of(),
+						/* expectedResultCount= */ 0),
+				Arguments.of(
+						"empty filters",
+						/* page= */ 1,
+						/* difficultes= */ List.of(),
+						/* tags= */ List.of(),
+						/* problems= */ List.of(
+								EASY_ARRAY_PROBLEM,
+								MEDIUM_ARRAY_PROBLEM,
+								MEDIUM_GREEDY_TREE_PROBLEM,
+								MEDIUM_TREE_PROBLEM),
+						/* expectedResultCount= */ 4),
+
+				// Difficulty filtering
+				Arguments.of(
+						"single difficulty filter",
+						/* page= */ 1,
+						/* difficultes= */ List.of(ProblemDifficulty.MEDIUM),
+						/* tags= */ List.of(),
+						/* problems= */ List.of(
+								MEDIUM_ARRAY_PROBLEM,
+								MEDIUM_TREE_PROBLEM,
+								MEDIUM_GREEDY_TREE_PROBLEM),
+						/* expectedResultCount= */ 3),
+				Arguments.of(
+						"multiple difficulties filter",
+						/* page= */ 1,
+						/* difficultes= */ List.of(ProblemDifficulty.EASY, ProblemDifficulty.MEDIUM),
+						/* tags= */ List.of(),
+						/* problems= */ List.of(
+								EASY_ARRAY_PROBLEM,
+								MEDIUM_ARRAY_PROBLEM,
+								MEDIUM_TREE_PROBLEM,
+								MEDIUM_GREEDY_TREE_PROBLEM),
+						/* expectedResultCount= */ 4),
+				Arguments.of("difficulty filter - no matches",
+						/* page= */ 1,
+						/* difficultes= */ List.of(ProblemDifficulty.HARD),
+						/* tags= */ List.of(),
+						/* problems= */ List.of(),
+						/* expectedResultCount= */ 0),
+
+				// Tag filtering
+				Arguments.of("single tag filter",
+						/* page= */ 1,
+						/* difficultes= */ List.of(),
+						/* tags= */ List.of(ProblemTag.ARRAY),
+						/* problems= */ List.of(
+								EASY_ARRAY_PROBLEM,
+								MEDIUM_ARRAY_PROBLEM),
+						/* expectedResultCount= */ 2),
+				Arguments.of("multiple tags filter",
+						/* page= */ 1,
+						/* difficultes= */ List.of(),
+						/* tags= */ List.of(ProblemTag.ARRAY, ProblemTag.GREEDY),
+						/* problems= */ List.of(
+								EASY_ARRAY_PROBLEM,
+								MEDIUM_ARRAY_PROBLEM,
+								MEDIUM_GREEDY_TREE_PROBLEM),
+						/* expectedResultCount= */ 3),
+
+				// Combined filtering
+				Arguments.of(
+						"combined difficulty and tag filtering",
+						/* page= */ 1,
+						/* difficultes= */ List.of(ProblemDifficulty.MEDIUM),
+						/* tags= */ List.of(ProblemTag.TREE),
+						/* problems= */ List.of(
+								MEDIUM_GREEDY_TREE_PROBLEM,
+								MEDIUM_TREE_PROBLEM),
+						/* expectedResultCount= */ 2));
+	}
+	@ParameterizedTest(name = "listProblems - {0}")
+	@MethodSource("listProblemsScenarios")
+	void listProblems_allScenarios(
+			String scenario,
+			int page,
+			List<ProblemDifficulty> difficulties,
+			List<ProblemTag> tags,
+			List<Problem> problems,
+			int expectedResultCount) {
+		ProblemFilterRequest filterRequest = new ProblemFilterRequest(difficulties, tags, page);
+		Pageable expectedPageable =
+				PageRequest.of(page - 1, PAGE_SIZE, Sort.by("createdAt").descending());
+		Page<Problem> problemPage = new PageImpl<>(problems, expectedPageable, problems.size());
+		when(problemRepository.findAll(any(Specification.class), eq(expectedPageable)))
+				.thenReturn(problemPage);
+
+		List<ProblemSummaryUi> result = problemService.listProblems(filterRequest);
+
+		assertNotNull(result);
+		assertEquals(expectedResultCount, result.size());
 	}
 
 	@Test
@@ -162,153 +282,6 @@ class ProblemServiceTest {
 				() -> problemService.createProblem(request),
 				"User is not authorized to create problems.");
 		verifyNoInteractions(problemRepository);
-	}
-
-	static Stream<Arguments> listProblemsScenarios() {
-		return Stream.of(
-				// Basic scenarios - no filters
-				Arguments.of("no filters - problems exist", null, null, 1, 2, false),
-				Arguments.of("no filters - no problems exist", null, null, 1, 0, true),
-				Arguments.of("empty filters", List.of(), List.of(), 1, 2, false),
-
-				// Difficulty filtering
-				Arguments.of("single difficulty filter", List.of(ProblemDifficulty.EASY), null, 1, 1, false),
-				Arguments.of(
-						"multiple difficulties filter",
-						List.of(ProblemDifficulty.EASY, ProblemDifficulty.HARD),
-						null,
-						1,
-						2,
-						false),
-				Arguments.of("difficulty filter - no matches", List.of(ProblemDifficulty.HARD), null, 1, 0, true),
-
-				// Tag filtering
-				Arguments.of("single tag filter", null, List.of(ProblemTag.ARRAY), 1, 1, false),
-				Arguments.of("multiple tags filter", null, List.of(ProblemTag.TREE, ProblemTag.GRAPH), 1, 2, false),
-
-				// Combined filtering
-				Arguments.of(
-						"combined difficulty and tag filtering",
-						List.of(ProblemDifficulty.EASY),
-						List.of(ProblemTag.ARRAY),
-						1,
-						1,
-						false),
-
-				// Pagination
-				Arguments.of("custom page number", null, null, 3, 1, false),
-				Arguments.of("page 5 with results", null, null, 5, 2, false));
-	}
-
-	@ParameterizedTest(name = "listProblems - {0}")
-	@MethodSource("listProblemsScenarios")
-	void listProblems_allScenarios(
-			String scenario,
-			List<ProblemDifficulty> difficulties,
-			List<ProblemTag> tags,
-			int page,
-			int expectedResultCount,
-			boolean isEmpty) {
-
-		ProblemFilterRequest filterRequest = new ProblemFilterRequest(difficulties, tags, page);
-
-		// Create appropriate mock problems based on scenario
-		List<Problem> problems;
-		if (isEmpty) {
-			problems = List.of();
-		} else if (expectedResultCount == 1) {
-			if (difficulties != null && difficulties.contains(ProblemDifficulty.EASY)) {
-				problems = List.of(createProblem(
-						"Problem 1",
-						"Statement 1",
-						1.0,
-						256,
-						ProblemDifficulty.EASY,
-						createUser(),
-						List.of(ProblemTag.ARRAY)));
-			} else if (tags != null && tags.contains(ProblemTag.ARRAY)) {
-				problems = List.of(createProblem(
-						"Problem 1",
-						"Statement 1",
-						1.0,
-						256,
-						ProblemDifficulty.EASY,
-						createUser(),
-						List.of(ProblemTag.ARRAY)));
-			} else {
-				problems = List.of(createProblem());
-			}
-		} else if (expectedResultCount == 2) {
-			if (difficulties != null
-					&& difficulties.contains(ProblemDifficulty.EASY)
-					&& difficulties.contains(ProblemDifficulty.HARD)) {
-				problems = List.of(
-						createProblem(
-								"Problem 1",
-								"Statement 1",
-								1.0,
-								256,
-								ProblemDifficulty.EASY,
-								createUser(),
-								List.of(ProblemTag.ARRAY)),
-						createProblem(
-								"Problem 2",
-								"Statement 2",
-								1.0,
-								256,
-								ProblemDifficulty.HARD,
-								createUser(),
-								List.of(ProblemTag.STRING)));
-			} else if (tags != null && tags.contains(ProblemTag.TREE) && tags.contains(ProblemTag.GRAPH)) {
-				problems = List.of(
-						createProblem(
-								"Problem 1",
-								"Statement 1",
-								1.0,
-								256,
-								ProblemDifficulty.EASY,
-								createUser(),
-								List.of(ProblemTag.TREE)),
-						createProblem(
-								"Problem 2",
-								"Statement 2",
-								1.0,
-								256,
-								ProblemDifficulty.MEDIUM,
-								createUser(),
-								List.of(ProblemTag.GRAPH)));
-			} else {
-				problems = List.of(createProblem(), createProblem());
-			}
-		} else {
-			problems = List.of(createProblem());
-		}
-
-		Pageable expectedPageable =
-				PageRequest.of(page - 1, PAGE_SIZE, Sort.by("createdAt").descending());
-		Page<Problem> problemPage =
-				isEmpty ? Page.empty() : new PageImpl<>(problems, expectedPageable, problems.size());
-		when(problemRepository.findAll(any(Specification.class), any(Pageable.class)))
-				.thenReturn(problemPage);
-
-		List<ProblemSummaryUi> result = problemService.listProblems(filterRequest);
-
-		// Assertions
-		assertNotNull(result);
-		assertEquals(expectedResultCount, result.size());
-		if (isEmpty) {
-			assertTrue(result.isEmpty());
-		}
-		verify(problemRepository).findAll(any(Specification.class), any(Pageable.class));
-
-		// Verify pagination for custom page scenarios
-		if (page == 3) {
-			ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-			verify(problemRepository).findAll(any(Specification.class), pageableCaptor.capture());
-			Pageable capturedPageable = pageableCaptor.getValue();
-			assertEquals(2, capturedPageable.getPageNumber()); // Page 3 should be index 2
-			assertEquals(PAGE_SIZE, capturedPageable.getPageSize());
-		}
 	}
 
 	private Problem createProblemFromRequest(CreateProblemRequest request) {

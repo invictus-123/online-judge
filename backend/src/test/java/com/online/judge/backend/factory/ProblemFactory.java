@@ -24,6 +24,11 @@ public class ProblemFactory {
 				TITLE, STATEMENT, TIME_LIMIT_SECOND, MEMORY_LIMIT_MB, DIFFICULTY, CREATED_BY_USER, PROBLEM_TAGS);
 	}
 
+	public static Problem createProblem(ProblemDifficulty difficulty, List<ProblemTag> problemTags) {
+		return createProblem(
+				TITLE, STATEMENT, TIME_LIMIT_SECOND, MEMORY_LIMIT_MB, difficulty, CREATED_BY_USER, problemTags);
+	}
+
 	public static Problem createProblem(
 			String title,
 			String statement,
