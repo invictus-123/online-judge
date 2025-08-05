@@ -38,6 +38,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -53,6 +54,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("integration")
+@ActiveProfiles("integration")
 class LifecycleIT {
 	private static final String BASE_URL = "/api/v1";
 	private static final String PROBLEM_TITLE = "Title";
