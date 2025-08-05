@@ -154,7 +154,7 @@ class ProblemControllerTest {
 
 		ListProblemsResponse expectedResponse = new ListProblemsResponse(expectedProblems);
 
-		mockMvc.perform(get("/api/v1/problems/list").param("page", "1").param("difficulties", "EASY"))
+		mockMvc.perform(get("/api/v1/problems/list").param("page", "1").param("difficulty", "EASY"))
 				.andExpect(status().isOk())
 				.andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
 	}
@@ -167,7 +167,7 @@ class ProblemControllerTest {
 
 		ListProblemsResponse expectedResponse = new ListProblemsResponse(expectedProblems);
 
-		mockMvc.perform(get("/api/v1/problems/list").param("page", "1").param("tags", "ARRAY"))
+		mockMvc.perform(get("/api/v1/problems/list").param("page", "1").param("tag", "ARRAY"))
 				.andExpect(status().isOk())
 				.andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
 	}
@@ -186,8 +186,8 @@ class ProblemControllerTest {
 
 		mockMvc.perform(get("/api/v1/problems/list")
 						.param("page", "1")
-						.param("difficulties", "EASY", "MEDIUM")
-						.param("tags", "ARRAY", "STRING"))
+						.param("difficulty", "EASY", "MEDIUM")
+						.param("tag", "ARRAY", "STRING"))
 				.andExpect(status().isOk())
 				.andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
 	}

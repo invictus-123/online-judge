@@ -135,7 +135,7 @@ class SubmissionControllerTest {
 
 		ListSubmissionsResponse expectedResponse = new ListSubmissionsResponse(expectedSubmissions);
 
-		mockMvc.perform(get("/api/v1/submissions/list").param("page", "1").param("statuses", "PASSED"))
+		mockMvc.perform(get("/api/v1/submissions/list").param("page", "1").param("status", "PASSED"))
 				.andExpect(status().isOk())
 				.andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
 	}
@@ -149,7 +149,7 @@ class SubmissionControllerTest {
 
 		ListSubmissionsResponse expectedResponse = new ListSubmissionsResponse(expectedSubmissions);
 
-		mockMvc.perform(get("/api/v1/submissions/list").param("page", "1").param("languages", "JAVA"))
+		mockMvc.perform(get("/api/v1/submissions/list").param("page", "1").param("language", "JAVA"))
 				.andExpect(status().isOk())
 				.andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
 	}
@@ -172,8 +172,8 @@ class SubmissionControllerTest {
 						.param("page", "1")
 						.param("onlyMe", "true")
 						.param("problemId", "1")
-						.param("statuses", "PASSED", "RUNTIME_ERROR")
-						.param("languages", "JAVA", "PYTHON"))
+						.param("status", "PASSED", "RUNTIME_ERROR")
+						.param("language", "JAVA", "PYTHON"))
 				.andExpect(status().isOk())
 				.andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
 	}
