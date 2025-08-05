@@ -29,7 +29,10 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
 		name = "tags",
-		indexes = {@Index(name = "idx_tag_name", columnList = "tag_name")})
+		indexes = {
+			@Index(name = "idx_tag_name", columnList = "tag_name"),
+			@Index(name = "idx_tag_problem_tag", columnList = "problem_id,tag_name")
+		})
 public class Tag {
 
 	/** The primary key for the tags table. */

@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.online.judge.backend.dto.filter.ProblemFilterRequest;
 import com.online.judge.backend.dto.request.CreateProblemRequest;
 import com.online.judge.backend.dto.request.CreateTestCaseRequest;
 import com.online.judge.backend.dto.response.CreateProblemResponse;
@@ -59,10 +60,11 @@ class ProblemControllerTest {
 		List<Long> problemIds = List.of(1L, 2L);
 		List<ProblemSummaryUi> problemSummaries =
 				problemIds.stream().map(this::createProblemSummaryUiWithId).toList();
-		when(problemService.listProblems(page)).thenReturn(problemSummaries);
+		ProblemFilterRequest expectedFilterRequest = new ProblemFilterRequest(null, null, page);
+		when(problemService.listProblems(expectedFilterRequest)).thenReturn(problemSummaries);
 		ListProblemsResponse expectedResponse = new ListProblemsResponse(problemSummaries);
 
-		ResponseEntity<ListProblemsResponse> response = problemController.listProblems(page);
+		ResponseEntity<ListProblemsResponse> response = problemController.listProblems(page, null, null);
 
 		assertEquals(200, response.getStatusCode().value());
 		assertEquals(expectedResponse, response.getBody());
@@ -78,10 +80,11 @@ class ProblemControllerTest {
 		List<Long> problemIds = List.of(1L, 2L);
 		List<ProblemSummaryUi> problemSummaries =
 				problemIds.stream().map(this::createProblemSummaryUiWithId).toList();
-		when(problemService.listProblems(page)).thenReturn(problemSummaries);
+		ProblemFilterRequest expectedFilterRequest = new ProblemFilterRequest(null, null, page);
+		when(problemService.listProblems(expectedFilterRequest)).thenReturn(problemSummaries);
 		ListProblemsResponse expectedResponse = new ListProblemsResponse(problemSummaries);
 
-		ResponseEntity<ListProblemsResponse> response = problemController.listProblems(page);
+		ResponseEntity<ListProblemsResponse> response = problemController.listProblems(page, null, null);
 
 		assertEquals(200, response.getStatusCode().value());
 		assertEquals(expectedResponse, response.getBody());
@@ -140,6 +143,65 @@ class ProblemControllerTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request)))
 				.andExpect(status().isCreated())
+				.andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
+	}
+
+	@Test
+	void listProblems_withDifficultyFilter_returnsFilteredProblems() throws Exception {
+		List<ProblemSummaryUi> expectedProblems = List.of(createProblemSummaryUiWithId(1L));
+		ProblemFilterRequest expectedFilterRequest = new ProblemFilterRequest(List.of(ProblemDifficulty.EASY), null, 1);
+		when(problemService.listProblems(expectedFilterRequest)).thenReturn(expectedProblems);
+
+		ListProblemsResponse expectedResponse = new ListProblemsResponse(expectedProblems);
+
+		mockMvc.perform(get("/api/v1/problems/list").param("page", "1").param("difficulties", "EASY"))
+				.andExpect(status().isOk())
+				.andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
+	}
+
+	@Test
+	void listProblems_withTagFilter_returnsFilteredProblems() throws Exception {
+		List<ProblemSummaryUi> expectedProblems = List.of(createProblemSummaryUiWithId(1L));
+		ProblemFilterRequest expectedFilterRequest = new ProblemFilterRequest(null, List.of(ProblemTag.ARRAY), 1);
+		when(problemService.listProblems(expectedFilterRequest)).thenReturn(expectedProblems);
+
+		ListProblemsResponse expectedResponse = new ListProblemsResponse(expectedProblems);
+
+		mockMvc.perform(get("/api/v1/problems/list").param("page", "1").param("tags", "ARRAY"))
+				.andExpect(status().isOk())
+				.andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
+	}
+
+	@Test
+	void listProblems_withMultipleDifficultiesAndTags_returnsFilteredProblems() throws Exception {
+		List<ProblemSummaryUi> expectedProblems =
+				List.of(createProblemSummaryUiWithId(1L), createProblemSummaryUiWithId(2L));
+		ProblemFilterRequest expectedFilterRequest = new ProblemFilterRequest(
+				List.of(ProblemDifficulty.EASY, ProblemDifficulty.MEDIUM),
+				List.of(ProblemTag.ARRAY, ProblemTag.STRING),
+				1);
+		when(problemService.listProblems(expectedFilterRequest)).thenReturn(expectedProblems);
+
+		ListProblemsResponse expectedResponse = new ListProblemsResponse(expectedProblems);
+
+		mockMvc.perform(get("/api/v1/problems/list")
+						.param("page", "1")
+						.param("difficulties", "EASY", "MEDIUM")
+						.param("tags", "ARRAY", "STRING"))
+				.andExpect(status().isOk())
+				.andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
+	}
+
+	@Test
+	void listProblems_withNoFiltersButCustomPage_returnsProblemsForPage() throws Exception {
+		List<ProblemSummaryUi> expectedProblems = List.of(createProblemSummaryUiWithId(1L));
+		ProblemFilterRequest expectedFilterRequest = new ProblemFilterRequest(null, null, 3);
+		when(problemService.listProblems(expectedFilterRequest)).thenReturn(expectedProblems);
+
+		ListProblemsResponse expectedResponse = new ListProblemsResponse(expectedProblems);
+
+		mockMvc.perform(get("/api/v1/problems/list").param("page", "3"))
+				.andExpect(status().isOk())
 				.andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
 	}
 

@@ -1,11 +1,15 @@
 package com.online.judge.backend.controller;
 
+import com.online.judge.backend.dto.filter.ProblemFilterRequest;
 import com.online.judge.backend.dto.request.CreateProblemRequest;
 import com.online.judge.backend.dto.response.CreateProblemResponse;
 import com.online.judge.backend.dto.response.GetProblemByIdResponse;
 import com.online.judge.backend.dto.response.ListProblemsResponse;
+import com.online.judge.backend.model.shared.ProblemDifficulty;
+import com.online.judge.backend.model.shared.ProblemTag;
 import com.online.judge.backend.service.ProblemService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -31,18 +35,23 @@ public class ProblemController {
 	}
 
 	/**
-	 * Handles GET requests to fetch a list of all problems with pagination, sorted
-	 * by creation date in descending order.
+	 * Handles GET requests to fetch a list of all problems with pagination and optional filtering,
+	 * sorted by creation date in descending order.
 	 *
-	 * @param page
-	 *            The page number to retrieve (default is 1).
-	 * @return A ResponseEntity containing a paginated list of problems.
+	 * @param page The page number to retrieve (default is 1).
+	 * @param difficulties List of difficulties to filter by (optional).
+	 * @param tags List of tags to filter by (optional).
+	 * @return A ResponseEntity containing a paginated list of problems matching the filters.
 	 */
 	@GetMapping("/list")
-	public ResponseEntity<ListProblemsResponse> listProblems(@RequestParam(defaultValue = "1") int page) {
-		logger.info("Received call to fetch all problems with pagination: page={}", page);
+	public ResponseEntity<ListProblemsResponse> listProblems(
+			@RequestParam(defaultValue = "1") int page,
+			@RequestParam(required = false) List<ProblemDifficulty> difficulties,
+			@RequestParam(required = false) List<ProblemTag> tags) {
+		ProblemFilterRequest filterRequest = new ProblemFilterRequest(difficulties, tags, page);
+		logger.info("Received call to fetch problems with filters={}", filterRequest);
 
-		ListProblemsResponse response = new ListProblemsResponse(problemService.listProblems(page));
+		ListProblemsResponse response = new ListProblemsResponse(problemService.listProblems(filterRequest));
 		return ResponseEntity.ok(response);
 	}
 

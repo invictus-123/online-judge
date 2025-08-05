@@ -2,8 +2,12 @@ package com.online.judge.backend.service;
 
 import static com.online.judge.backend.converter.ProblemConverter.toProblemDetailsUi;
 import static com.online.judge.backend.converter.ProblemConverter.toProblemFromCreateProblemRequest;
+import static com.online.judge.backend.repository.specification.ProblemSpecifications.and;
+import static com.online.judge.backend.repository.specification.ProblemSpecifications.hasDifficultyIn;
+import static com.online.judge.backend.repository.specification.ProblemSpecifications.hasTagIn;
 
 import com.online.judge.backend.converter.ProblemConverter;
+import com.online.judge.backend.dto.filter.ProblemFilterRequest;
 import com.online.judge.backend.dto.request.CreateProblemRequest;
 import com.online.judge.backend.dto.ui.ProblemDetailsUi;
 import com.online.judge.backend.dto.ui.ProblemSummaryUi;
@@ -21,6 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,20 +48,28 @@ public class ProblemService {
 	}
 
 	/**
-	 * Retrieves a paginated list of all problems, sorted by creation date in
+	 * Retrieves a paginated list of problems with optional filtering, sorted by creation date in
 	 * descending order.
 	 *
-	 * @param page
-	 *            The page number (1-based).
-	 * @return A List<ProblemSummaryUi> containing the paginated list of problems.
+	 * @param filterRequest The filter request containing pagination and filter criteria.
+	 * @return A List<ProblemSummaryUi> containing the paginated list of problems matching the filters.
 	 */
 	@Transactional(readOnly = true)
-	public List<ProblemSummaryUi> listProblems(int page) {
-		logger.info("Fetching all problems for page {}", page);
+	public List<ProblemSummaryUi> listProblems(ProblemFilterRequest filterRequest) {
+		logger.info(
+				"Fetching problems with filters: page={}, difficulties={}, tags={}",
+				filterRequest.page(),
+				filterRequest.difficulties(),
+				filterRequest.tags());
 
-		Pageable pageable =
-				PageRequest.of(page - 1, pageSize, Sort.by("createdAt").descending());
-		return problemRepository.findAll(pageable).getContent().stream()
+		Pageable pageable = PageRequest.of(
+				filterRequest.page() - 1, pageSize, Sort.by("createdAt").descending());
+
+		// Build the specification dynamically based on filter criteria
+		Specification<Problem> specification =
+				and(hasDifficultyIn(filterRequest.difficulties()), hasTagIn(filterRequest.tags()));
+
+		return problemRepository.findAll(specification, pageable).getContent().stream()
 				.map(ProblemConverter::toProblemSummaryUi)
 				.toList();
 	}

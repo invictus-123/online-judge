@@ -40,7 +40,10 @@ import org.hibernate.annotations.CreationTimestamp;
 @Entity
 @Table(
 		name = "problems",
-		indexes = {@Index(name = "idx_problem_created_at", columnList = "createdAt")})
+		indexes = {
+			@Index(name = "idx_problem_created_at", columnList = "createdAt"),
+			@Index(name = "idx_problem_difficulty_created_at", columnList = "difficulty,createdAt"),
+		})
 public class Problem {
 
 	/** The primary key for the problems table. */
