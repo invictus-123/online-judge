@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.online.judge.backend.dto.filter.ProblemFilterRequest;
 import com.online.judge.backend.dto.request.CreateProblemRequest;
 import com.online.judge.backend.dto.request.CreateTestCaseRequest;
 import com.online.judge.backend.dto.ui.ProblemDetailsUi;
@@ -31,9 +32,13 @@ import com.online.judge.backend.repository.ProblemRepository;
 import com.online.judge.backend.util.UserUtil;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -42,6 +47,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class ProblemServiceTest {
@@ -66,34 +72,6 @@ class ProblemServiceTest {
 		problemService = new ProblemService(problemRepository, userUtil, PAGE_SIZE);
 	}
 
-	@Test
-	void listProblems_whenProblemsExist_returnsProblemSummaryList() {
-		int page = 5;
-		List<Problem> problems = List.of(createProblem(), createProblem());
-		Pageable pageable =
-				PageRequest.of(page - 1, PAGE_SIZE, Sort.by("createdAt").descending());
-		Page<Problem> problemPage = new PageImpl<>(problems, pageable, problems.size());
-		when(problemRepository.findAll(any(Pageable.class))).thenReturn(problemPage);
-
-		List<ProblemSummaryUi> result = problemService.listProblems(page);
-
-		assertNotNull(result);
-		assertEquals(2, result.size());
-	}
-
-	@Test
-	void listProblems_whenNoProblemsExist_returnsEmptyList() {
-		int page = 1;
-		Pageable pageable =
-				PageRequest.of(page - 1, PAGE_SIZE, Sort.by("createdAt").descending());
-		when(problemRepository.findAll(pageable)).thenReturn(Page.empty());
-
-		List<ProblemSummaryUi> result = problemService.listProblems(page);
-
-		assertNotNull(result);
-		assertTrue(result.isEmpty());
-		verify(problemRepository).findAll(any(Pageable.class));
-	}
 
 	@Test
 	void getProblemDetailsById_whenProblemExists_returnsProblemDetails() {
@@ -185,6 +163,120 @@ class ProblemServiceTest {
 				() -> problemService.createProblem(request),
 				"User is not authorized to create problems.");
 		verifyNoInteractions(problemRepository);
+	}
+
+	static Stream<Arguments> listProblemsScenarios() {
+		return Stream.of(
+				// Basic scenarios - no filters
+				Arguments.of(
+						"no filters - problems exist",
+						null, null, 1, 2, false),
+				Arguments.of(
+						"no filters - no problems exist", 
+						null, null, 1, 0, true),
+				Arguments.of(
+						"empty filters",
+						List.of(), List.of(), 1, 2, false),
+				
+				// Difficulty filtering
+				Arguments.of(
+						"single difficulty filter",
+						List.of(ProblemDifficulty.EASY), null, 1, 1, false),
+				Arguments.of(
+						"multiple difficulties filter",
+						List.of(ProblemDifficulty.EASY, ProblemDifficulty.HARD), null, 1, 2, false),
+				Arguments.of(
+						"difficulty filter - no matches",
+						List.of(ProblemDifficulty.HARD), null, 1, 0, true),
+				
+				// Tag filtering
+				Arguments.of(
+						"single tag filter",
+						null, List.of(ProblemTag.ARRAY), 1, 1, false),
+				Arguments.of(
+						"multiple tags filter",
+						null, List.of(ProblemTag.TREE, ProblemTag.GRAPH), 1, 2, false),
+				
+				// Combined filtering
+				Arguments.of(
+						"combined difficulty and tag filtering",
+						List.of(ProblemDifficulty.EASY), List.of(ProblemTag.ARRAY), 1, 1, false),
+				
+				// Pagination
+				Arguments.of(
+						"custom page number",
+						null, null, 3, 1, false),
+				Arguments.of(
+						"page 5 with results",
+						null, null, 5, 2, false)
+		);
+	}
+
+	@ParameterizedTest(name = "listProblems - {0}")
+	@MethodSource("listProblemsScenarios")
+	void listProblems_allScenarios(
+			String scenario,
+			List<ProblemDifficulty> difficulties,
+			List<ProblemTag> tags,
+			int page,
+			int expectedResultCount,
+			boolean isEmpty) {
+		
+		ProblemFilterRequest filterRequest = new ProblemFilterRequest(difficulties, tags, page);
+
+		// Create appropriate mock problems based on scenario
+		List<Problem> problems;
+		if (isEmpty) {
+			problems = List.of();
+		} else if (expectedResultCount == 1) {
+			if (difficulties != null && difficulties.contains(ProblemDifficulty.EASY)) {
+				problems = List.of(createProblem("Problem 1", "Statement 1", 1.0, 256, 
+					ProblemDifficulty.EASY, createUser(), List.of(ProblemTag.ARRAY)));
+			} else if (tags != null && tags.contains(ProblemTag.ARRAY)) {
+				problems = List.of(createProblem("Problem 1", "Statement 1", 1.0, 256, 
+					ProblemDifficulty.EASY, createUser(), List.of(ProblemTag.ARRAY)));
+			} else {
+				problems = List.of(createProblem());
+			}
+		} else if (expectedResultCount == 2) {
+			if (difficulties != null && difficulties.contains(ProblemDifficulty.EASY) && difficulties.contains(ProblemDifficulty.HARD)) {
+				problems = List.of(
+					createProblem("Problem 1", "Statement 1", 1.0, 256, ProblemDifficulty.EASY, createUser(), List.of(ProblemTag.ARRAY)),
+					createProblem("Problem 2", "Statement 2", 1.0, 256, ProblemDifficulty.HARD, createUser(), List.of(ProblemTag.STRING)));
+			} else if (tags != null && tags.contains(ProblemTag.TREE) && tags.contains(ProblemTag.GRAPH)) {
+				problems = List.of(
+					createProblem("Problem 1", "Statement 1", 1.0, 256, ProblemDifficulty.EASY, createUser(), List.of(ProblemTag.TREE)),
+					createProblem("Problem 2", "Statement 2", 1.0, 256, ProblemDifficulty.MEDIUM, createUser(), List.of(ProblemTag.GRAPH)));
+			} else {
+				problems = List.of(createProblem(), createProblem());
+			}
+		} else {
+			problems = List.of(createProblem());
+		}
+
+		Pageable expectedPageable = PageRequest.of(page - 1, PAGE_SIZE, Sort.by("createdAt").descending());
+		Page<Problem> problemPage = isEmpty ? Page.empty() : new PageImpl<>(problems, expectedPageable, problems.size());
+		when(problemRepository.findAll(any(Specification.class), any(Pageable.class)))
+				.thenReturn(problemPage);
+
+		List<ProblemSummaryUi> result = problemService.listProblems(filterRequest);
+
+		// Assertions
+		assertNotNull(result);
+		assertEquals(expectedResultCount, result.size());
+		if (isEmpty) {
+			assertTrue(result.isEmpty());
+		}
+		verify(problemRepository).findAll(any(Specification.class), any(Pageable.class));
+		
+		// Verify pagination for custom page scenarios
+		if (page == 3) {
+			ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+			verify(problemRepository).findAll(any(Specification.class), pageableCaptor.capture());
+			Pageable capturedPageable = pageableCaptor.getValue();
+			assertEquals(2, capturedPageable.getPageNumber()); // Page 3 should be index 2
+			assertEquals(PAGE_SIZE, capturedPageable.getPageSize());
+		}
 	}
 
 	private Problem createProblemFromRequest(CreateProblemRequest request) {
