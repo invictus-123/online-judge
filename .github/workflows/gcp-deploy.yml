@@ -1,9 +1,10 @@
 name: Deploy to GCP
 
-on:
-  push:
-    branches:
-      - main
+# Temporarily disabled - uncomment the trigger below to re-enable
+# on:
+#   push:
+#     branches:
+#       - main
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
