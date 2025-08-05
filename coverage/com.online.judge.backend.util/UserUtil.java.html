@@ -2,13 +2,14 @@
 
 import com.online.judge.backend.exception.UserNotAuthorizedException;
 import com.online.judge.backend.model.User;
+import java.util.Optional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Component
 public class UserUtil {
-<span class="fc" id="L11">	UserUtil() {}</span>
+<span class="fc" id="L12">	UserUtil() {}</span>
 
 	/**
 	 * Retrieves the currently authenticated user from the security context.
@@ -18,16 +19,36 @@ public class UserUtil {
 	 *                    not an instance of User.
 	 */
 	public User getCurrentAuthenticatedUser() {
-<span class="fc" id="L21">		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();</span>
-<span class="pc bpc" id="L22" title="2 of 4 branches missed.">		if (authentication == null || !authentication.isAuthenticated()) {</span>
-<span class="nc" id="L23">			throw new UserNotAuthorizedException(&quot;No authenticated user found in security context.&quot;);</span>
+<span class="fc" id="L22">		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="pc bpc" id="L23" title="2 of 4 branches missed.">		if (authentication == null || !authentication.isAuthenticated()) {</span>
+<span class="nc" id="L24">			throw new UserNotAuthorizedException(&quot;No authenticated user found in security context.&quot;);</span>
 		}
 
-<span class="fc" id="L26">		Object principal = authentication.getPrincipal();</span>
-<span class="pc bpc" id="L27" title="1 of 2 branches missed.">		if (principal instanceof User authenticatedUser) {</span>
-<span class="fc" id="L28">			return authenticatedUser;</span>
+<span class="fc" id="L27">		Object principal = authentication.getPrincipal();</span>
+<span class="pc bpc" id="L28" title="1 of 2 branches missed.">		if (principal instanceof User authenticatedUser) {</span>
+<span class="fc" id="L29">			return authenticatedUser;</span>
 		} else {
-<span class="nc" id="L30">			throw new UserNotAuthorizedException(&quot;The authenticated principal is not an instance of the User class.&quot;);</span>
+<span class="nc" id="L31">			throw new UserNotAuthorizedException(&quot;The authenticated principal is not an instance of the User class.&quot;);</span>
+		}
+	}
+
+	/**
+	 * Retrieves the currently authenticated user from the security context, returning empty if no 
+	 * authenticated user is found.
+	 *
+	 * @return The authenticated User object, or empty if no user is authenticated.
+	 */
+	public Optional&lt;User&gt; getCurrentAuthenticatedUserOptional() {
+<span class="fc" id="L42">		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="pc bpc" id="L43" title="2 of 4 branches missed.">		if (authentication == null || !authentication.isAuthenticated()) {</span>
+<span class="nc" id="L44">			return Optional.empty();</span>
+		}
+
+<span class="fc" id="L47">		Object principal = authentication.getPrincipal();</span>
+<span class="pc bpc" id="L48" title="1 of 2 branches missed.">		if (principal instanceof User authenticatedUser) {</span>
+<span class="nc" id="L49">			return Optional.of(authenticatedUser);</span>
+		} else {
+<span class="fc" id="L51">			return Optional.empty();</span>
 		}
 	}
 }

@@ -2,11 +2,11 @@
 
 import static com.online.judge.backend.converter.ProblemConverter.toProblemDetailsUi;
 import static com.online.judge.backend.converter.ProblemConverter.toProblemFromCreateProblemRequest;
+import static com.online.judge.backend.converter.ProblemConverter.toProblemSummaryUi;
 import static com.online.judge.backend.repository.specification.ProblemSpecifications.and;
 import static com.online.judge.backend.repository.specification.ProblemSpecifications.hasDifficultyIn;
 import static com.online.judge.backend.repository.specification.ProblemSpecifications.hasTagIn;
 
-import com.online.judge.backend.converter.ProblemConverter;
 import com.online.judge.backend.dto.filter.ProblemFilterRequest;
 import com.online.judge.backend.dto.request.CreateProblemRequest;
 import com.online.judge.backend.dto.ui.ProblemDetailsUi;
@@ -15,10 +15,12 @@ import com.online.judge.backend.exception.ProblemNotFoundException;
 import com.online.judge.backend.exception.UserNotAuthorizedException;
 import com.online.judge.backend.model.Problem;
 import com.online.judge.backend.model.User;
+import com.online.judge.backend.model.shared.SolvedStatus;
 import com.online.judge.backend.model.shared.UserRole;
 import com.online.judge.backend.repository.ProblemRepository;
 import com.online.judge.backend.util.UserUtil;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,20 +34,23 @@ import org.springframework.transaction.annotation.Transactional;
 /** Service class for managing problems. */
 @Service
 public class ProblemService {
-<span class="fc" id="L35">	private static final Logger logger = LoggerFactory.getLogger(ProblemService.class);</span>
+<span class="fc" id="L37">	private static final Logger logger = LoggerFactory.getLogger(ProblemService.class);</span>
 
 	private final ProblemRepository problemRepository;
+	private final SolvedStatusService solvedStatusService;
 	private final UserUtil userUtil;
 	private final int pageSize;
 
 	public ProblemService(
 			ProblemRepository problemRepository,
+			SolvedStatusService solvedStatusService,
 			UserUtil userUtil,
-<span class="fc" id="L44">			@Value(&quot;${problems.list.page-size:50}&quot;) int pageSize) {</span>
-<span class="fc" id="L45">		this.problemRepository = problemRepository;</span>
-<span class="fc" id="L46">		this.userUtil = userUtil;</span>
-<span class="fc" id="L47">		this.pageSize = pageSize;</span>
-<span class="fc" id="L48">	}</span>
+<span class="fc" id="L48">			@Value(&quot;${problems.list.page-size:50}&quot;) int pageSize) {</span>
+<span class="fc" id="L49">		this.problemRepository = problemRepository;</span>
+<span class="fc" id="L50">		this.solvedStatusService = solvedStatusService;</span>
+<span class="fc" id="L51">		this.userUtil = userUtil;</span>
+<span class="fc" id="L52">		this.pageSize = pageSize;</span>
+<span class="fc" id="L53">	}</span>
 
 	/**
 	 * Retrieves a paginated list of problems with optional filtering, sorted by creation date in
@@ -56,22 +61,29 @@ public class ProblemService {
 	 */
 	@Transactional(readOnly = true)
 	public List&lt;ProblemSummaryUi&gt; listProblems(ProblemFilterRequest filterRequest) {
-<span class="fc" id="L59">		logger.info(</span>
+<span class="fc" id="L64">		logger.info(</span>
 				&quot;Fetching problems with filters: page={}, difficulties={}, tags={}&quot;,
-<span class="fc" id="L61">				filterRequest.page(),</span>
-<span class="fc" id="L62">				filterRequest.difficulties(),</span>
-<span class="fc" id="L63">				filterRequest.tags());</span>
+<span class="fc" id="L66">				filterRequest.page(),</span>
+<span class="fc" id="L67">				filterRequest.difficulties(),</span>
+<span class="fc" id="L68">				filterRequest.tags());</span>
 
-<span class="fc" id="L65">		Pageable pageable = PageRequest.of(</span>
-<span class="fc" id="L66">				filterRequest.page() - 1, pageSize, Sort.by(&quot;createdAt&quot;).descending());</span>
+<span class="fc" id="L70">		Pageable pageable = PageRequest.of(</span>
+<span class="fc" id="L71">				filterRequest.page() - 1, pageSize, Sort.by(&quot;createdAt&quot;).descending());</span>
 
 		// Build the specification dynamically based on filter criteria
-<span class="fc" id="L69">		Specification&lt;Problem&gt; specification =</span>
-<span class="fc" id="L70">				and(hasDifficultyIn(filterRequest.difficulties()), hasTagIn(filterRequest.tags()));</span>
+<span class="fc" id="L74">		Specification&lt;Problem&gt; specification =</span>
+<span class="fc" id="L75">				and(hasDifficultyIn(filterRequest.difficulties()), hasTagIn(filterRequest.tags()));</span>
 
-<span class="fc" id="L72">		return problemRepository.findAll(specification, pageable).getContent().stream()</span>
-<span class="fc" id="L73">				.map(ProblemConverter::toProblemSummaryUi)</span>
-<span class="fc" id="L74">				.toList();</span>
+<span class="fc" id="L77">		List&lt;Problem&gt; problems =</span>
+<span class="fc" id="L78">				problemRepository.findAll(specification, pageable).getContent();</span>
+<span class="fc" id="L79">		List&lt;Long&gt; problemIds = problems.stream().map(Problem::getId).toList();</span>
+<span class="fc" id="L80">		User currentUser = userUtil.getCurrentAuthenticatedUserOptional().orElse(null);</span>
+<span class="fc" id="L81">		Map&lt;Long, SolvedStatus&gt; solvedStatusMap =</span>
+<span class="fc" id="L82">				solvedStatusService.getSolvedStatusForProblems(currentUser, problemIds);</span>
+
+<span class="fc" id="L84">		return problems.stream()</span>
+<span class="fc" id="L85">				.map(problem -&gt; toProblemSummaryUi(problem, solvedStatusMap.get(problem.getId())))</span>
+<span class="fc" id="L86">				.toList();</span>
 	}
 
 	/**
@@ -85,17 +97,20 @@ public class ProblemService {
 	 */
 	@Transactional(readOnly = true)
 	public ProblemDetailsUi getProblemDetailsById(Long problemId) {
-<span class="fc" id="L88">		logger.info(&quot;Fetching details for problem with ID: {}&quot;, problemId);</span>
+<span class="fc" id="L100">		logger.info(&quot;Fetching details for problem with ID: {}&quot;, problemId);</span>
 
-<span class="fc" id="L90">		return problemRepository</span>
-<span class="fc" id="L91">				.findById(problemId)</span>
-<span class="fc" id="L92">				.map(problem -&gt; {</span>
-<span class="fc" id="L93">					logger.info(&quot;Problem found: {}&quot;, problem);</span>
-<span class="fc" id="L94">					return toProblemDetailsUi(problem);</span>
+<span class="fc" id="L102">		return problemRepository</span>
+<span class="fc" id="L103">				.findById(problemId)</span>
+<span class="fc" id="L104">				.map(problem -&gt; {</span>
+<span class="fc" id="L105">					logger.info(&quot;Problem found: {}&quot;, problem);</span>
+
+<span class="fc" id="L107">					User currentUser = userUtil.getCurrentAuthenticatedUserOptional().orElse(null);</span>
+<span class="fc" id="L108">					SolvedStatus solvedStatus = solvedStatusService.getSolvedStatus(currentUser, problemId);</span>
+<span class="fc" id="L109">					return toProblemDetailsUi(problem, solvedStatus);</span>
 				})
-<span class="fc" id="L96">				.orElseThrow(() -&gt; {</span>
-<span class="fc" id="L97">					logger.error(&quot;Problem with ID {} not found&quot;, problemId);</span>
-<span class="fc" id="L98">					return new ProblemNotFoundException(&quot;Problem with ID &quot; + problemId + &quot; not found&quot;);</span>
+<span class="fc" id="L111">				.orElseThrow(() -&gt; {</span>
+<span class="fc" id="L112">					logger.error(&quot;Problem with ID {} not found&quot;, problemId);</span>
+<span class="fc" id="L113">					return new ProblemNotFoundException(&quot;Problem with ID &quot; + problemId + &quot; not found&quot;);</span>
 				});
 	}
 
@@ -109,19 +124,19 @@ public class ProblemService {
 	 */
 	@Transactional
 	public ProblemDetailsUi createProblem(CreateProblemRequest request) {
-<span class="fc" id="L112">		logger.info(&quot;Creating a new problem with title: {}&quot;, request.title());</span>
+<span class="fc" id="L127">		logger.info(&quot;Creating a new problem with title: {}&quot;, request.title());</span>
 
-<span class="fc" id="L114">		User authenticatedUser = userUtil.getCurrentAuthenticatedUser();</span>
-<span class="fc bfc" id="L115" title="All 2 branches covered.">		if (!authenticatedUser.getRole().equals(UserRole.ADMIN)) {</span>
-<span class="fc" id="L116">			logger.warn(&quot;User {} is not authorized to create problems&quot;, authenticatedUser.getHandle());</span>
-<span class="fc" id="L117">			throw new UserNotAuthorizedException(&quot;User is not authorized to create problems.&quot;);</span>
+<span class="fc" id="L129">		User authenticatedUser = userUtil.getCurrentAuthenticatedUser();</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">		if (!authenticatedUser.getRole().equals(UserRole.ADMIN)) {</span>
+<span class="fc" id="L131">			logger.warn(&quot;User {} is not authorized to create problems&quot;, authenticatedUser.getHandle());</span>
+<span class="fc" id="L132">			throw new UserNotAuthorizedException(&quot;User is not authorized to create problems.&quot;);</span>
 		}
 
-<span class="fc" id="L120">		Problem problem = toProblemFromCreateProblemRequest(request);</span>
-<span class="fc" id="L121">		problem.setCreatedBy(authenticatedUser);</span>
-<span class="fc" id="L122">		Problem savedProblem = problemRepository.save(problem);</span>
-<span class="fc" id="L123">		logger.info(&quot;Problem created with ID: {} by user: {}&quot;, savedProblem.getId(), authenticatedUser.getHandle());</span>
-<span class="fc" id="L124">		return toProblemDetailsUi(savedProblem);</span>
+<span class="fc" id="L135">		Problem problem = toProblemFromCreateProblemRequest(request);</span>
+<span class="fc" id="L136">		problem.setCreatedBy(authenticatedUser);</span>
+<span class="fc" id="L137">		Problem savedProblem = problemRepository.save(problem);</span>
+<span class="fc" id="L138">		logger.info(&quot;Problem created with ID: {} by user: {}&quot;, savedProblem.getId(), authenticatedUser.getHandle());</span>
+<span class="fc" id="L139">		return toProblemDetailsUi(savedProblem);</span>
 	}
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

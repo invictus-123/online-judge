@@ -2,9 +2,10 @@
 
 import com.online.judge.backend.model.shared.ProblemDifficulty;
 import com.online.judge.backend.model.shared.ProblemTag;
+import com.online.judge.backend.model.shared.SolvedStatus;
 import java.util.List;
 
-<span class="fc" id="L7">public record ProblemDetailsUi(</span>
+<span class="fc" id="L8">public record ProblemDetailsUi(</span>
 		Long id,
 		String title,
 		String statement,
@@ -12,5 +13,6 @@ import java.util.List;
 		Integer memoryLimitInMb,
 		ProblemDifficulty difficulty,
 		List&lt;ProblemTag&gt; tags,
-		List&lt;TestCaseUi&gt; sampleTestCases) {}
+		List&lt;TestCaseUi&gt; sampleTestCases,
+		SolvedStatus solvedStatus) {}
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

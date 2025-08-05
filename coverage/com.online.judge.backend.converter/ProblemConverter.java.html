@@ -11,53 +11,63 @@ import com.online.judge.backend.model.Problem;
 import com.online.judge.backend.model.Tag;
 import com.online.judge.backend.model.TestCase;
 import com.online.judge.backend.model.shared.ProblemTag;
+import com.online.judge.backend.model.shared.SolvedStatus;
 import java.util.List;
 
 public class ProblemConverter {
 	public static ProblemSummaryUi toProblemSummaryUi(Problem problem) {
-<span class="fc" id="L18">		return new ProblemSummaryUi(</span>
-<span class="fc" id="L19">				problem.getId(), problem.getTitle(), problem.getDifficulty(), listProblemTags(problem));</span>
+<span class="fc" id="L19">		return toProblemSummaryUi(problem, SolvedStatus.UNATTEMPTED);</span>
+	}
+
+	public static ProblemSummaryUi toProblemSummaryUi(Problem problem, SolvedStatus solvedStatus) {
+<span class="fc" id="L23">		return new ProblemSummaryUi(</span>
+<span class="fc" id="L24">				problem.getId(), problem.getTitle(), problem.getDifficulty(), listProblemTags(problem), solvedStatus);</span>
 	}
 
 	public static ProblemDetailsUi toProblemDetailsUi(Problem problem) {
-<span class="fc" id="L23">		return new ProblemDetailsUi(</span>
-<span class="fc" id="L24">				problem.getId(),</span>
-<span class="fc" id="L25">				problem.getTitle(),</span>
-<span class="fc" id="L26">				problem.getStatement(),</span>
-<span class="fc" id="L27">				problem.getTimeLimitSecond(),</span>
-<span class="fc" id="L28">				problem.getMemoryLimitMb(),</span>
-<span class="fc" id="L29">				problem.getDifficulty(),</span>
-<span class="fc" id="L30">				listProblemTags(problem),</span>
-<span class="fc" id="L31">				toTestCaseUi(listSampleTestCases(problem)));</span>
+<span class="fc" id="L28">		return toProblemDetailsUi(problem, SolvedStatus.UNATTEMPTED);</span>
+	}
+
+	public static ProblemDetailsUi toProblemDetailsUi(Problem problem, SolvedStatus solvedStatus) {
+<span class="fc" id="L32">		return new ProblemDetailsUi(</span>
+<span class="fc" id="L33">				problem.getId(),</span>
+<span class="fc" id="L34">				problem.getTitle(),</span>
+<span class="fc" id="L35">				problem.getStatement(),</span>
+<span class="fc" id="L36">				problem.getTimeLimitSecond(),</span>
+<span class="fc" id="L37">				problem.getMemoryLimitMb(),</span>
+<span class="fc" id="L38">				problem.getDifficulty(),</span>
+<span class="fc" id="L39">				listProblemTags(problem),</span>
+<span class="fc" id="L40">				toTestCaseUi(listSampleTestCases(problem)),</span>
+				solvedStatus);
 	}
 
 	public static Problem toProblemFromCreateProblemRequest(CreateProblemRequest request) {
-<span class="fc" id="L35">		Problem problem = new Problem();</span>
-<span class="fc" id="L36">		problem.setTitle(request.title());</span>
-<span class="fc" id="L37">		problem.setStatement(request.statement());</span>
-<span class="fc" id="L38">		problem.setDifficulty(request.difficulty());</span>
-<span class="fc" id="L39">		problem.setTimeLimitSecond(request.timeLimit());</span>
-<span class="fc" id="L40">		problem.setMemoryLimitMb(request.memoryLimit());</span>
+<span class="fc" id="L45">		Problem problem = new Problem();</span>
+<span class="fc" id="L46">		problem.setTitle(request.title());</span>
+<span class="fc" id="L47">		problem.setStatement(request.statement());</span>
+<span class="fc" id="L48">		problem.setDifficulty(request.difficulty());</span>
+<span class="fc" id="L49">		problem.setTimeLimitSecond(request.timeLimit());</span>
+<span class="fc" id="L50">		problem.setMemoryLimitMb(request.memoryLimit());</span>
 
-<span class="fc" id="L42">		List&lt;Tag&gt; tags = request.tags().stream()</span>
-<span class="fc" id="L43">				.map(problemTag -&gt; toTagFromProblemTag(problem, problemTag))</span>
-<span class="fc" id="L44">				.toList();</span>
-<span class="fc" id="L45">		problem.setTags(tags);</span>
+<span class="fc" id="L52">		List&lt;Tag&gt; tags = request.tags().stream()</span>
+<span class="fc" id="L53">				.map(problemTag -&gt; toTagFromProblemTag(problem, problemTag))</span>
+<span class="fc" id="L54">				.toList();</span>
+<span class="fc" id="L55">		problem.setTags(tags);</span>
 
-<span class="fc" id="L47">		List&lt;TestCase&gt; testCases = request.testCases().stream()</span>
-<span class="fc" id="L48">				.map(tcRequest -&gt; toTestCaseFromCreateTestCaseRequest(problem, tcRequest))</span>
-<span class="fc" id="L49">				.toList();</span>
-<span class="fc" id="L50">		problem.setTestCases(testCases);</span>
+<span class="fc" id="L57">		List&lt;TestCase&gt; testCases = request.testCases().stream()</span>
+<span class="fc" id="L58">				.map(tcRequest -&gt; toTestCaseFromCreateTestCaseRequest(problem, tcRequest))</span>
+<span class="fc" id="L59">				.toList();</span>
+<span class="fc" id="L60">		problem.setTestCases(testCases);</span>
 
-<span class="fc" id="L52">		return problem;</span>
+<span class="fc" id="L62">		return problem;</span>
 	}
 
 	private static List&lt;ProblemTag&gt; listProblemTags(Problem problem) {
-<span class="fc" id="L56">		return problem.getTags().stream().map(Tag::getTagName).toList();</span>
+<span class="fc" id="L66">		return problem.getTags().stream().map(Tag::getTagName).toList();</span>
 	}
 
 	private static List&lt;TestCase&gt; listSampleTestCases(Problem problem) {
-<span class="fc" id="L60">		return problem.getTestCases().stream().filter(TestCase::getIsSample).toList();</span>
+<span class="fc" id="L70">		return problem.getTestCases().stream().filter(TestCase::getIsSample).toList();</span>
 	}
 
 	private ProblemConverter() {

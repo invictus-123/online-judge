@@ -45,6 +45,21 @@ public class SubmissionSpecifications {
 	}
 
 	/**
+	 * Creates a specification that filters submissions by multiple problem IDs.
+	 *
+	 * @param problemIds The problem IDs to filter by
+	 * @return Specification for problem ID filtering
+	 */
+	public static Specification&lt;Submission&gt; hasProblemIdIn(List&lt;Long&gt; problemIds) {
+<span class="fc" id="L54">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="nc bnc" id="L55" title="All 4 branches missed.">			if (problemIds == null || problemIds.isEmpty()) {</span>
+<span class="nc" id="L56">				return criteriaBuilder.conjunction();</span>
+			}
+<span class="nc" id="L58">			return root.get(&quot;problem&quot;).get(&quot;id&quot;).in(problemIds);</span>
+		};
+	}
+
+	/**
 	 * Creates a specification that filters submissions by status.
 	 * Submissions matching any of the provided statuses will be returned.
 	 *
@@ -52,11 +67,11 @@ public class SubmissionSpecifications {
 	 * @return Specification for status filtering
 	 */
 	public static Specification&lt;Submission&gt; hasStatusIn(List&lt;SubmissionStatus&gt; statuses) {
-<span class="fc" id="L55">		return (root, query, criteriaBuilder) -&gt; {</span>
-<span class="pc bpc" id="L56" title="3 of 4 branches missed.">			if (statuses == null || statuses.isEmpty()) {</span>
-<span class="fc" id="L57">				return criteriaBuilder.conjunction();</span>
+<span class="fc" id="L70">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="pc bpc" id="L71" title="3 of 4 branches missed.">			if (statuses == null || statuses.isEmpty()) {</span>
+<span class="fc" id="L72">				return criteriaBuilder.conjunction();</span>
 			}
-<span class="nc" id="L59">			return root.get(&quot;status&quot;).in(statuses);</span>
+<span class="nc" id="L74">			return root.get(&quot;status&quot;).in(statuses);</span>
 		};
 	}
 
@@ -68,11 +83,11 @@ public class SubmissionSpecifications {
 	 * @return Specification for language filtering
 	 */
 	public static Specification&lt;Submission&gt; hasLanguageIn(List&lt;SubmissionLanguage&gt; languages) {
-<span class="fc" id="L71">		return (root, query, criteriaBuilder) -&gt; {</span>
-<span class="pc bpc" id="L72" title="3 of 4 branches missed.">			if (languages == null || languages.isEmpty()) {</span>
-<span class="fc" id="L73">				return criteriaBuilder.conjunction();</span>
+<span class="fc" id="L86">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="pc bpc" id="L87" title="3 of 4 branches missed.">			if (languages == null || languages.isEmpty()) {</span>
+<span class="fc" id="L88">				return criteriaBuilder.conjunction();</span>
 			}
-<span class="nc" id="L75">			return root.get(&quot;language&quot;).in(languages);</span>
+<span class="nc" id="L90">			return root.get(&quot;language&quot;).in(languages);</span>
 		};
 	}
 
@@ -85,15 +100,15 @@ public class SubmissionSpecifications {
 	 */
 	@SafeVarargs
 	public static Specification&lt;Submission&gt; and(Specification&lt;Submission&gt;... specifications) {
-<span class="fc" id="L88">		Specification&lt;Submission&gt; result = null;</span>
-<span class="fc bfc" id="L89" title="All 2 branches covered.">		for (Specification&lt;Submission&gt; spec : specifications) {</span>
-<span class="fc bfc" id="L90" title="All 2 branches covered.">			if (result == null) {</span>
-<span class="fc" id="L91">				result = spec;</span>
+<span class="fc" id="L103">		Specification&lt;Submission&gt; result = null;</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">		for (Specification&lt;Submission&gt; spec : specifications) {</span>
+<span class="fc bfc" id="L105" title="All 2 branches covered.">			if (result == null) {</span>
+<span class="fc" id="L106">				result = spec;</span>
 			} else {
-<span class="fc" id="L93">				result = result.and(spec);</span>
+<span class="fc" id="L108">				result = result.and(spec);</span>
 			}
 		}
-<span class="pc bpc" id="L96" title="1 of 2 branches missed.">		return result != null ? result : (root, query, criteriaBuilder) -&gt; criteriaBuilder.conjunction();</span>
+<span class="pc bpc" id="L111" title="1 of 2 branches missed.">		return result != null ? result : (root, query, criteriaBuilder) -&gt; criteriaBuilder.conjunction();</span>
 	}
 
 	private SubmissionSpecifications() {
