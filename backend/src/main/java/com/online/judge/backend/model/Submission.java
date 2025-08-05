@@ -39,6 +39,8 @@ import org.hibernate.annotations.CreationTimestamp;
 			@Index(name = "idx_submission_problem_submitted_at", columnList = "problem_id,submittedAt"),
 			@Index(name = "idx_submission_status_submitted_at", columnList = "status,submittedAt"),
 			@Index(name = "idx_submission_language_submitted_at", columnList = "language,submittedAt"),
+			@Index(name = "idx_submission_user_problem_status", columnList = "user_id,problem_id,status"),
+			@Index(name = "idx_submission_user_problem", columnList = "user_id,problem_id"),
 		})
 public class Submission {
 

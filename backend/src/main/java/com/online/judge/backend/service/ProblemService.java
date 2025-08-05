@@ -2,11 +2,11 @@ package com.online.judge.backend.service;
 
 import static com.online.judge.backend.converter.ProblemConverter.toProblemDetailsUi;
 import static com.online.judge.backend.converter.ProblemConverter.toProblemFromCreateProblemRequest;
+import static com.online.judge.backend.converter.ProblemConverter.toProblemSummaryUi;
 import static com.online.judge.backend.repository.specification.ProblemSpecifications.and;
 import static com.online.judge.backend.repository.specification.ProblemSpecifications.hasDifficultyIn;
 import static com.online.judge.backend.repository.specification.ProblemSpecifications.hasTagIn;
 
-import com.online.judge.backend.converter.ProblemConverter;
 import com.online.judge.backend.dto.filter.ProblemFilterRequest;
 import com.online.judge.backend.dto.request.CreateProblemRequest;
 import com.online.judge.backend.dto.ui.ProblemDetailsUi;
@@ -15,10 +15,12 @@ import com.online.judge.backend.exception.ProblemNotFoundException;
 import com.online.judge.backend.exception.UserNotAuthorizedException;
 import com.online.judge.backend.model.Problem;
 import com.online.judge.backend.model.User;
+import com.online.judge.backend.model.shared.SolvedStatus;
 import com.online.judge.backend.model.shared.UserRole;
 import com.online.judge.backend.repository.ProblemRepository;
 import com.online.judge.backend.util.UserUtil;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,14 +37,17 @@ public class ProblemService {
 	private static final Logger logger = LoggerFactory.getLogger(ProblemService.class);
 
 	private final ProblemRepository problemRepository;
+	private final SolvedStatusService solvedStatusService;
 	private final UserUtil userUtil;
 	private final int pageSize;
 
 	public ProblemService(
 			ProblemRepository problemRepository,
+			SolvedStatusService solvedStatusService,
 			UserUtil userUtil,
 			@Value("${problems.list.page-size:50}") int pageSize) {
 		this.problemRepository = problemRepository;
+		this.solvedStatusService = solvedStatusService;
 		this.userUtil = userUtil;
 		this.pageSize = pageSize;
 	}
@@ -69,8 +74,15 @@ public class ProblemService {
 		Specification<Problem> specification =
 				and(hasDifficultyIn(filterRequest.difficulties()), hasTagIn(filterRequest.tags()));
 
-		return problemRepository.findAll(specification, pageable).getContent().stream()
-				.map(ProblemConverter::toProblemSummaryUi)
+		List<Problem> problems =
+				problemRepository.findAll(specification, pageable).getContent();
+		List<Long> problemIds = problems.stream().map(Problem::getId).toList();
+		User currentUser = userUtil.getCurrentAuthenticatedUser();
+		Map<Long, SolvedStatus> solvedStatusMap =
+				solvedStatusService.getSolvedStatusForProblems(currentUser, problemIds);
+
+		return problems.stream()
+				.map(problem -> toProblemSummaryUi(problem, solvedStatusMap.get(problem.getId())))
 				.toList();
 	}
 
@@ -91,7 +103,10 @@ public class ProblemService {
 				.findById(problemId)
 				.map(problem -> {
 					logger.info("Problem found: {}", problem);
-					return toProblemDetailsUi(problem);
+
+					User currentUser = userUtil.getCurrentAuthenticatedUser();
+					SolvedStatus solvedStatus = solvedStatusService.getSolvedStatus(currentUser, problemId);
+					return toProblemDetailsUi(problem, solvedStatus);
 				})
 				.orElseThrow(() -> {
 					logger.error("Problem with ID {} not found", problemId);
