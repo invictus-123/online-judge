@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProblemController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.controller</a> &gt; <span class="el_source">ProblemController.java</span></div><h1>ProblemController.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.controller;
 
+import com.online.judge.backend.annotation.RateLimit;
 import com.online.judge.backend.dto.filter.ProblemFilterRequest;
 import com.online.judge.backend.dto.request.CreateProblemRequest;
 import com.online.judge.backend.dto.response.CreateProblemResponse;
@@ -26,13 +27,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(&quot;/api/v1/problems&quot;)
 public class ProblemController {
-<span class="fc" id="L29">	private static final Logger logger = LoggerFactory.getLogger(ProblemController.class);</span>
+<span class="fc" id="L30">	private static final Logger logger = LoggerFactory.getLogger(ProblemController.class);</span>
 
 	private final ProblemService problemService;
 
-<span class="fc" id="L33">	public ProblemController(ProblemService problemService) {</span>
-<span class="fc" id="L34">		this.problemService = problemService;</span>
-<span class="fc" id="L35">	}</span>
+<span class="fc" id="L34">	public ProblemController(ProblemService problemService) {</span>
+<span class="fc" id="L35">		this.problemService = problemService;</span>
+<span class="fc" id="L36">	}</span>
 
 	/**
 	 * Handles GET requests to fetch a list of all problems with pagination and optional filtering,
@@ -48,11 +49,11 @@ public class ProblemController {
 			@RequestParam(defaultValue = &quot;1&quot;) int page,
 			@RequestParam(required = false, name = &quot;difficulty&quot;) List&lt;ProblemDifficulty&gt; difficulties,
 			@RequestParam(required = false, name = &quot;tag&quot;) List&lt;ProblemTag&gt; tags) {
-<span class="fc" id="L51">		ProblemFilterRequest filterRequest = new ProblemFilterRequest(difficulties, tags, page);</span>
-<span class="fc" id="L52">		logger.info(&quot;Received call to fetch problems with filters={}&quot;, filterRequest);</span>
+<span class="fc" id="L52">		ProblemFilterRequest filterRequest = new ProblemFilterRequest(difficulties, tags, page);</span>
+<span class="fc" id="L53">		logger.info(&quot;Received call to fetch problems with filters={}&quot;, filterRequest);</span>
 
-<span class="fc" id="L54">		ListProblemsResponse response = new ListProblemsResponse(problemService.listProblems(filterRequest));</span>
-<span class="fc" id="L55">		return ResponseEntity.ok(response);</span>
+<span class="fc" id="L55">		ListProblemsResponse response = new ListProblemsResponse(problemService.listProblems(filterRequest));</span>
+<span class="fc" id="L56">		return ResponseEntity.ok(response);</span>
 	}
 
 	/**
@@ -65,10 +66,10 @@ public class ProblemController {
 	 */
 	@GetMapping(&quot;/{id}&quot;)
 	public ResponseEntity&lt;GetProblemByIdResponse&gt; getProblemById(@PathVariable Long id) {
-<span class="fc" id="L68">		logger.info(&quot;Received call to fetch problem with ID {}&quot;, id);</span>
+<span class="fc" id="L69">		logger.info(&quot;Received call to fetch problem with ID {}&quot;, id);</span>
 
-<span class="fc" id="L70">		GetProblemByIdResponse response = new GetProblemByIdResponse(problemService.getProblemDetailsById(id));</span>
-<span class="fc" id="L71">		return ResponseEntity.ok(response);</span>
+<span class="fc" id="L71">		GetProblemByIdResponse response = new GetProblemByIdResponse(problemService.getProblemDetailsById(id));</span>
+<span class="fc" id="L72">		return ResponseEntity.ok(response);</span>
 	}
 
 	/**
@@ -80,11 +81,12 @@ public class ProblemController {
 	 *         401 error if the user is not authorized to create a problem.
 	 */
 	@PostMapping
+	@RateLimit(apiType = &quot;create-problem&quot;, capacity = 10, refillPeriodMinutes = 1)
 	public ResponseEntity&lt;CreateProblemResponse&gt; createProblem(@Valid @RequestBody CreateProblemRequest request) {
-<span class="fc" id="L84">		logger.info(&quot;Received request to create a new problem: {}&quot;, request);</span>
+<span class="fc" id="L86">		logger.info(&quot;Received request to create a new problem: {}&quot;, request);</span>
 
-<span class="fc" id="L86">		CreateProblemResponse response = new CreateProblemResponse(problemService.createProblem(request));</span>
-<span class="fc" id="L87">		return new ResponseEntity&lt;&gt;(response, HttpStatus.CREATED);</span>
+<span class="fc" id="L88">		CreateProblemResponse response = new CreateProblemResponse(problemService.createProblem(request));</span>
+<span class="fc" id="L89">		return new ResponseEntity&lt;&gt;(response, HttpStatus.CREATED);</span>
 	}
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

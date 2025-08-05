@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RateLimitService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.service</a> &gt; <span class="el_source">RateLimitService.java</span></div><h1>RateLimitService.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.service;
+
+import com.online.judge.backend.config.RateLimitingConfig;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.ConsumptionProbe;
+import jakarta.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import org.springframework.stereotype.Service;
+
+@Service
+public class RateLimitService {
+	private final RateLimitingConfig rateLimitingConfig;
+
+<span class="fc" id="L17">	public RateLimitService(RateLimitingConfig rateLimitingConfig) {</span>
+<span class="fc" id="L18">		this.rateLimitingConfig = rateLimitingConfig;</span>
+<span class="fc" id="L19">	}</span>
+
+	public boolean tryConsume(HttpServletRequest request, String apiType, int capacity, Duration refillPeriod) {
+<span class="fc" id="L22">		String clientIdHash = getClientIdHash(request);</span>
+<span class="fc" id="L23">		String key = apiType + &quot;:&quot; + clientIdHash;</span>
+
+<span class="fc" id="L25">		Bucket bucket = rateLimitingConfig.resolveBucket(key, capacity, refillPeriod);</span>
+<span class="fc" id="L26">		ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);</span>
+
+<span class="fc" id="L28">		return probe.isConsumed();</span>
+	}
+
+	private String getClientIdHash(HttpServletRequest request) {
+<span class="fc" id="L32">		String clientId = getClientId(request);</span>
+<span class="fc" id="L33">		return hashClientId(clientId);</span>
+	}
+
+	private String getClientId(HttpServletRequest request) {
+<span class="fc" id="L37">		String xForwardedFor = request.getHeader(&quot;X-Forwarded-For&quot;);</span>
+<span class="fc bfc" id="L38" title="All 4 branches covered.">		if (xForwardedFor != null &amp;&amp; !xForwardedFor.isEmpty()) {</span>
+<span class="fc" id="L39">			return xForwardedFor.split(&quot;,&quot;)[0].trim();</span>
+		}
+<span class="fc" id="L41">		return request.getRemoteAddr();</span>
+	}
+
+	private String hashClientId(String clientId) {
+		try {
+<span class="fc" id="L46">			MessageDigest digest = MessageDigest.getInstance(&quot;SHA-256&quot;);</span>
+<span class="fc" id="L47">			byte[] hash = digest.digest(clientId.getBytes(StandardCharsets.UTF_8));</span>
+<span class="fc" id="L48">			StringBuilder hexString = new StringBuilder();</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">			for (byte b : hash) {</span>
+<span class="fc" id="L50">				String hex = Integer.toHexString(0xff &amp; b);</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">				if (hex.length() == 1) {</span>
+<span class="fc" id="L52">					hexString.append('0');</span>
+				}
+<span class="fc" id="L54">				hexString.append(hex);</span>
+			}
+			// Use only first 16 characters to reduce memory footprint
+<span class="fc" id="L57">			return hexString.toString().substring(0, 16);</span>
+<span class="nc" id="L58">		} catch (NoSuchAlgorithmException e) {</span>
+			// Fallback to simple hash if SHA-256 is not available (unlikely)
+<span class="nc" id="L60">			return String.valueOf(clientId.hashCode());</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
