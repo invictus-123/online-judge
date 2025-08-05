@@ -50,8 +50,8 @@ public class SubmissionController {
 			@RequestParam(defaultValue = "1") int page,
 			@RequestParam(required = false) Boolean onlyMe,
 			@RequestParam(required = false) Long problemId,
-			@RequestParam(required = false) List<SubmissionStatus> statuses,
-			@RequestParam(required = false) List<SubmissionLanguage> languages) {
+			@RequestParam(required = false, name = "status") List<SubmissionStatus> statuses,
+			@RequestParam(required = false, name = "language") List<SubmissionLanguage> languages) {
 
 		SubmissionFilterRequest filterRequest =
 				new SubmissionFilterRequest(onlyMe, problemId, statuses, languages, page);
