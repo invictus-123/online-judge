@@ -33,7 +33,7 @@ public class UserUtil {
 	}
 
 	/**
-	 * Retrieves the currently authenticated user from the security context, returning empty if no 
+	 * Retrieves the currently authenticated user from the security context, returning empty if no
 	 * authenticated user is found.
 	 *
 	 * @return The authenticated User object, or empty if no user is authenticated.

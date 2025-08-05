@@ -104,7 +104,8 @@ public class ProblemService {
 				.map(problem -> {
 					logger.info("Problem found: {}", problem);
 
-					User currentUser = userUtil.getCurrentAuthenticatedUserOptional().orElse(null);
+					User currentUser =
+							userUtil.getCurrentAuthenticatedUserOptional().orElse(null);
 					SolvedStatus solvedStatus = solvedStatusService.getSolvedStatus(currentUser, problemId);
 					return toProblemDetailsUi(problem, solvedStatus);
 				})

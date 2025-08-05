@@ -1,5 +1,6 @@
 package com.online.judge.backend.controller;
 
+import com.online.judge.backend.annotation.RateLimit;
 import com.online.judge.backend.dto.request.LoginRequest;
 import com.online.judge.backend.dto.request.RegisterRequest;
 import com.online.judge.backend.dto.response.AuthResponse;
@@ -38,6 +39,7 @@ public class AuthController {
 	}
 
 	@PostMapping("/register")
+	@RateLimit(apiType = "auth", capacity = 10, refillPeriodMinutes = 1)
 	public ResponseEntity<AuthResponse> registerUser(@Valid @RequestBody RegisterRequest registerRequest) {
 		logger.info(
 				"Received registration request for user: {} with role: {}",
@@ -60,6 +62,7 @@ public class AuthController {
 	}
 
 	@PostMapping("/login")
+	@RateLimit(apiType = "auth", capacity = 10, refillPeriodMinutes = 1)
 	public ResponseEntity<AuthResponse> loginUser(@Valid @RequestBody LoginRequest loginRequest) {
 		logger.info("Attempting to authenticate user with handle: {}", loginRequest.handle());
 

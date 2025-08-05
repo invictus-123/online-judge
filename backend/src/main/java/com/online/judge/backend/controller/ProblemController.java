@@ -1,5 +1,6 @@
 package com.online.judge.backend.controller;
 
+import com.online.judge.backend.annotation.RateLimit;
 import com.online.judge.backend.dto.filter.ProblemFilterRequest;
 import com.online.judge.backend.dto.request.CreateProblemRequest;
 import com.online.judge.backend.dto.response.CreateProblemResponse;
@@ -80,6 +81,7 @@ public class ProblemController {
 	 *         401 error if the user is not authorized to create a problem.
 	 */
 	@PostMapping
+	@RateLimit(apiType = "create-problem", capacity = 10, refillPeriodMinutes = 1)
 	public ResponseEntity<CreateProblemResponse> createProblem(@Valid @RequestBody CreateProblemRequest request) {
 		logger.info("Received request to create a new problem: {}", request);
 
