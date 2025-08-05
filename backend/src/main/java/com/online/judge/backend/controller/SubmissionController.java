@@ -1,11 +1,15 @@
 package com.online.judge.backend.controller;
 
+import com.online.judge.backend.dto.filter.SubmissionFilterRequest;
 import com.online.judge.backend.dto.request.SubmitCodeRequest;
 import com.online.judge.backend.dto.response.GetSubmissionByIdResponse;
 import com.online.judge.backend.dto.response.ListSubmissionsResponse;
 import com.online.judge.backend.dto.response.SubmitCodeResponse;
+import com.online.judge.backend.model.shared.SubmissionLanguage;
+import com.online.judge.backend.model.shared.SubmissionStatus;
 import com.online.judge.backend.service.SubmissionService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -31,18 +35,30 @@ public class SubmissionController {
 	}
 
 	/**
-	 * Handles GET requests to fetch a list of all submissions with pagination, sorted by submission
-	 * date in descending order.
+	 * Handles GET requests to fetch a list of submissions with optional filtering and pagination,
+	 * sorted by submission date in descending order.
 	 *
-	 * @param page
-	 *            The page number to retrieve (default is 1).
-	 * @return A ResponseEntity containing a paginated list of submissions.
+	 * @param page The page number to retrieve (default is 1).
+	 * @param onlyMe Filter to show only submissions by the current user (optional).
+	 * @param problemId Filter submissions by problem ID (optional).
+	 * @param statuses Filter submissions by status (optional).
+	 * @param languages Filter submissions by programming language (optional).
+	 * @return A ResponseEntity containing a paginated list of submissions matching the filters.
 	 */
 	@GetMapping("/list")
-	public ResponseEntity<ListSubmissionsResponse> listSubmissions(@RequestParam(defaultValue = "1") int page) {
-		logger.info("Received call to fetch all submissions with pagination: page={}", page);
+	public ResponseEntity<ListSubmissionsResponse> listSubmissions(
+			@RequestParam(defaultValue = "1") int page,
+			@RequestParam(required = false) Boolean onlyMe,
+			@RequestParam(required = false) Long problemId,
+			@RequestParam(required = false, name = "status") List<SubmissionStatus> statuses,
+			@RequestParam(required = false, name = "language") List<SubmissionLanguage> languages) {
 
-		ListSubmissionsResponse response = new ListSubmissionsResponse(submissionService.listSubmissions(page));
+		SubmissionFilterRequest filterRequest =
+				new SubmissionFilterRequest(onlyMe, problemId, statuses, languages, page);
+		logger.info("Received call to fetch submissions with filters={}", filterRequest);
+
+		ListSubmissionsResponse response =
+				new ListSubmissionsResponse(submissionService.listSubmissions(filterRequest));
 		return ResponseEntity.ok(response);
 	}
 

@@ -3,8 +3,14 @@ package com.online.judge.backend.service;
 import static com.online.judge.backend.converter.SubmissionConverter.toSubmissionDetailsUi;
 import static com.online.judge.backend.converter.SubmissionConverter.toSubmissionFromRequest;
 import static com.online.judge.backend.converter.SubmissionConverter.toSubmissionMessage;
+import static com.online.judge.backend.repository.specification.SubmissionSpecifications.and;
+import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasLanguageIn;
+import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasProblem;
+import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasStatusIn;
+import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasUser;
 
 import com.online.judge.backend.converter.SubmissionConverter;
+import com.online.judge.backend.dto.filter.SubmissionFilterRequest;
 import com.online.judge.backend.dto.request.SubmitCodeRequest;
 import com.online.judge.backend.dto.ui.SubmissionDetailsUi;
 import com.online.judge.backend.dto.ui.SubmissionSummaryUi;
@@ -25,6 +31,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,20 +60,42 @@ public class SubmissionService {
 	}
 
 	/**
-	 * Retrieves a paginated list of all submissions, sorted by the submission time in descending
+	 * Retrieves a paginated list of submissions with optional filtering, sorted by the submission time in descending
 	 * order.
 	 *
-	 * @param page
-	 *            The page number (1-based).
-	 * @return A List<SubmissionSummaryUi> containing the paginated list of submissions.
+	 * @param filterRequest The filter request containing filtering criteria and page information
+	 * @return A List<SubmissionSummaryUi> containing the paginated list of submissions matching the filters
 	 */
 	@Transactional(readOnly = true)
-	public List<SubmissionSummaryUi> listSubmissions(int page) {
-		logger.info("Fetching all submissions for page {}", page);
+	public List<SubmissionSummaryUi> listSubmissions(SubmissionFilterRequest filterRequest) {
+		logger.info(
+				"Fetching submissions with filters: page={}, onlyMe={}, problemId={}, statuses={}, languages={}",
+				filterRequest.page(),
+				filterRequest.onlyMe(),
+				filterRequest.problemId(),
+				filterRequest.statuses(),
+				filterRequest.languages());
 
-		Pageable pageable =
-				PageRequest.of(page - 1, pageSize, Sort.by("submittedAt").descending());
-		return submissionRepository.findAll(pageable).getContent().stream()
+		User currentUser = null;
+		if (Boolean.TRUE.equals(filterRequest.onlyMe())) {
+			try {
+				currentUser = userUtil.getCurrentAuthenticatedUser();
+				logger.debug("Filtering submissions for user: {}", currentUser.getHandle());
+			} catch (Exception e) {
+				logger.debug("No authenticated user found, ignoring 'onlyMe' filter");
+			}
+		}
+
+		Specification<Submission> specification = and(
+				hasUser(currentUser),
+				hasProblem(filterRequest.problemId()),
+				hasStatusIn(filterRequest.statuses()),
+				hasLanguageIn(filterRequest.languages()));
+
+		Pageable pageable = PageRequest.of(
+				filterRequest.page() - 1, pageSize, Sort.by("submittedAt").descending());
+
+		return submissionRepository.findAll(specification, pageable).getContent().stream()
 				.map(SubmissionConverter::toSubmissionSummaryUi)
 				.toList();
 	}

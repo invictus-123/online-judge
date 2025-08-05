@@ -46,8 +46,8 @@ public class ProblemController {
 	@GetMapping("/list")
 	public ResponseEntity<ListProblemsResponse> listProblems(
 			@RequestParam(defaultValue = "1") int page,
-			@RequestParam(required = false) List<ProblemDifficulty> difficulties,
-			@RequestParam(required = false) List<ProblemTag> tags) {
+			@RequestParam(required = false, name = "difficulty") List<ProblemDifficulty> difficulties,
+			@RequestParam(required = false, name = "tag") List<ProblemTag> tags) {
 		ProblemFilterRequest filterRequest = new ProblemFilterRequest(difficulties, tags, page);
 		logger.info("Received call to fetch problems with filters={}", filterRequest);
 
