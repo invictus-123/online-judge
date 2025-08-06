@@ -85,6 +85,10 @@ class RateLimitIT {
 
 		assertThat(successCount.get()).isEqualTo(numRequests);
 		assertThat(rateLimitedCount.get()).isZero();
+
+		System.out.printf(
+				"Completed authEndpoint_shouldAllow100RequestsPerMinute test with %d success and %d rate limited requests.",
+				successCount.get(), rateLimitedCount.get());
 	}
 
 	@Test
@@ -124,5 +128,9 @@ class RateLimitIT {
 
 		assertThat(successCount.get()).isLessThanOrEqualTo(100);
 		assertThat(rateLimitedCount.get()).isGreaterThan(0);
+
+		System.out.printf(
+				"Completed authEndpoint_shouldAllow100RequestsPerMinute_moreThan100Requests test with %d success and %d rate limited requests.",
+				successCount.get(), rateLimitedCount.get());
 	}
 }
