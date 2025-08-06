@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.exception</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.exception;
+
+import com.online.judge.backend.dto.response.ErrorResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.validation.BindException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+@RestControllerAdvice
+<span class="fc" id="L22">public class GlobalExceptionHandler {</span>
+<span class="fc" id="L23">	private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);</span>
+
+	@ExceptionHandler(ProblemNotFoundException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleProblemNotFound(
+			ProblemNotFoundException ex, HttpServletRequest request) {
+<span class="fc" id="L28">		logger.warn(&quot;Problem not found: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L29">		ErrorResponse errorResponse = new ErrorResponse(</span>
+<span class="fc" id="L30">				ex.getMessage(), &quot;PROBLEM_NOT_FOUND&quot;, HttpStatus.NOT_FOUND.value(), request.getRequestURI());</span>
+<span class="fc" id="L31">		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(SubmissionNotFoundException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleSubmissionNotFound(
+			SubmissionNotFoundException ex, HttpServletRequest request) {
+<span class="fc" id="L37">		logger.warn(&quot;Submission not found: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L38">		ErrorResponse errorResponse = new ErrorResponse(</span>
+<span class="fc" id="L39">				ex.getMessage(), &quot;SUBMISSION_NOT_FOUND&quot;, HttpStatus.NOT_FOUND.value(), request.getRequestURI());</span>
+<span class="fc" id="L40">		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(UserAlreadyExistsException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleUserAlreadyExists(
+			UserAlreadyExistsException ex, HttpServletRequest request) {
+<span class="fc" id="L46">		logger.warn(&quot;User already exists: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L47">		ErrorResponse errorResponse = new ErrorResponse(</span>
+<span class="fc" id="L48">				ex.getMessage(), &quot;USER_ALREADY_EXISTS&quot;, HttpStatus.CONFLICT.value(), request.getRequestURI());</span>
+<span class="fc" id="L49">		return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(UserNotAuthorizedException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleUserNotAuthorized(
+			UserNotAuthorizedException ex, HttpServletRequest request) {
+<span class="fc" id="L55">		logger.warn(&quot;User not authorized: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L56">		ErrorResponse errorResponse = new ErrorResponse(</span>
+<span class="fc" id="L57">				ex.getMessage(), &quot;UNAUTHORIZED&quot;, HttpStatus.FORBIDDEN.value(), request.getRequestURI());</span>
+<span class="fc" id="L58">		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(BadCredentialsException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
+<span class="fc" id="L63">		logger.warn(&quot;Bad credentials: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L64">		ErrorResponse errorResponse = new ErrorResponse(</span>
+				&quot;Invalid username or password&quot;,
+				&quot;BAD_CREDENTIALS&quot;,
+<span class="fc" id="L67">				HttpStatus.UNAUTHORIZED.value(),</span>
+<span class="fc" id="L68">				request.getRequestURI());</span>
+<span class="fc" id="L69">		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(DisabledException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleDisabled(DisabledException ex, HttpServletRequest request) {
+<span class="nc" id="L74">		logger.warn(&quot;Account disabled: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L75">		ErrorResponse errorResponse = new ErrorResponse(</span>
+<span class="nc" id="L76">				&quot;Account is disabled&quot;, &quot;ACCOUNT_DISABLED&quot;, HttpStatus.FORBIDDEN.value(), request.getRequestURI());</span>
+<span class="nc" id="L77">		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(LockedException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleLocked(LockedException ex, HttpServletRequest request) {
+<span class="nc" id="L82">		logger.warn(&quot;Account locked: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L83">		ErrorResponse errorResponse = new ErrorResponse(</span>
+<span class="nc" id="L84">				&quot;Account is locked&quot;, &quot;ACCOUNT_LOCKED&quot;, HttpStatus.FORBIDDEN.value(), request.getRequestURI());</span>
+<span class="nc" id="L85">		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(AccessDeniedException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+<span class="fc" id="L90">		logger.warn(&quot;Access denied: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L91">		ErrorResponse errorResponse = new ErrorResponse(</span>
+<span class="fc" id="L92">				&quot;Access denied&quot;, &quot;ACCESS_DENIED&quot;, HttpStatus.FORBIDDEN.value(), request.getRequestURI());</span>
+<span class="fc" id="L93">		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler({MethodArgumentNotValidException.class})
+	public ResponseEntity&lt;ErrorResponse&gt; handleValidationExceptions(
+			MethodArgumentNotValidException ex, HttpServletRequest request) {
+<span class="fc" id="L99">		logger.warn(&quot;Validation failed: {}&quot;, ex.getMessage());</span>
+
+<span class="fc" id="L101">		List&lt;ErrorResponse.FieldError&gt; fieldErrors = ex.getBindingResult().getFieldErrors().stream()</span>
+<span class="fc" id="L102">				.map(fieldError -&gt; new ErrorResponse.FieldError(</span>
+<span class="fc" id="L103">						fieldError.getField(), fieldError.getRejectedValue(), fieldError.getDefaultMessage()))</span>
+<span class="fc" id="L104">				.toList();</span>
+
+<span class="fc" id="L106">		ErrorResponse errorResponse = new ErrorResponse(</span>
+				&quot;Validation failed&quot;,
+				&quot;VALIDATION_ERROR&quot;,
+<span class="fc" id="L109">				HttpStatus.BAD_REQUEST.value(),</span>
+<span class="fc" id="L110">				request.getRequestURI(),</span>
+				fieldErrors);
+<span class="fc" id="L112">		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(BindException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleBindException(BindException ex, HttpServletRequest request) {
+<span class="nc" id="L117">		logger.warn(&quot;Binding failed: {}&quot;, ex.getMessage());</span>
+
+<span class="nc" id="L119">		List&lt;ErrorResponse.FieldError&gt; fieldErrors = ex.getBindingResult().getFieldErrors().stream()</span>
+<span class="nc" id="L120">				.map(fieldError -&gt; new ErrorResponse.FieldError(</span>
+<span class="nc" id="L121">						fieldError.getField(), fieldError.getRejectedValue(), fieldError.getDefaultMessage()))</span>
+<span class="nc" id="L122">				.toList();</span>
+
+<span class="nc" id="L124">		ErrorResponse errorResponse = new ErrorResponse(</span>
+				&quot;Request binding failed&quot;,
+				&quot;BINDING_ERROR&quot;,
+<span class="nc" id="L127">				HttpStatus.BAD_REQUEST.value(),</span>
+<span class="nc" id="L128">				request.getRequestURI(),</span>
+				fieldErrors);
+<span class="nc" id="L130">		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleTypeMismatch(
+			MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+<span class="fc" id="L136">		logger.warn(&quot;Type mismatch: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L137">		String message = String.format(&quot;Invalid value '%s' for parameter '%s'&quot;, ex.getValue(), ex.getName());</span>
+<span class="fc" id="L138">		ErrorResponse errorResponse =</span>
+<span class="fc" id="L139">				new ErrorResponse(message, &quot;TYPE_MISMATCH&quot;, HttpStatus.BAD_REQUEST.value(), request.getRequestURI());</span>
+<span class="fc" id="L140">		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleDataIntegrityViolation(
+			DataIntegrityViolationException ex, HttpServletRequest request) {
+<span class="nc" id="L146">		logger.error(&quot;Data integrity violation: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L147">		ErrorResponse errorResponse = new ErrorResponse(</span>
+				&quot;Data integrity constraint violation&quot;,
+				&quot;DATA_INTEGRITY_ERROR&quot;,
+<span class="nc" id="L150">				HttpStatus.CONFLICT.value(),</span>
+<span class="nc" id="L151">				request.getRequestURI());</span>
+<span class="nc" id="L152">		return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleIllegalArgument(
+			IllegalArgumentException ex, HttpServletRequest request) {
+<span class="fc" id="L158">		logger.warn(&quot;Illegal argument: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L159">		ErrorResponse errorResponse = new ErrorResponse(</span>
+<span class="fc" id="L160">				ex.getMessage(), &quot;ILLEGAL_ARGUMENT&quot;, HttpStatus.BAD_REQUEST.value(), request.getRequestURI());</span>
+<span class="fc" id="L161">		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);</span>
+	}
+
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity&lt;ErrorResponse&gt; handleGenericException(Exception ex, HttpServletRequest request) {
+<span class="fc" id="L166">		logger.error(&quot;Unexpected error occurred&quot;, ex);</span>
+<span class="fc" id="L167">		ErrorResponse errorResponse = new ErrorResponse(</span>
+				&quot;An unexpected error occurred&quot;,
+				&quot;INTERNAL_SERVER_ERROR&quot;,
+<span class="fc" id="L170">				HttpStatus.INTERNAL_SERVER_ERROR.value(),</span>
+<span class="fc" id="L171">				request.getRequestURI());</span>
+<span class="fc" id="L172">		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

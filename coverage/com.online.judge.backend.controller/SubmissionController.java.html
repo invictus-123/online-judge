@@ -73,11 +73,15 @@ public class SubmissionController {
 	 */
 	@GetMapping(&quot;/{id}&quot;)
 	public ResponseEntity&lt;GetSubmissionByIdResponse&gt; getSubmissionById(@PathVariable Long id) {
-<span class="fc" id="L76">		logger.info(&quot;Received call to fetch submission with ID {}&quot;, id);</span>
+<span class="pc bpc" id="L76" title="2 of 4 branches missed.">		if (id == null || id &lt;= 0) {</span>
+<span class="nc" id="L77">			throw new IllegalArgumentException(&quot;Submission ID must be a positive number&quot;);</span>
+		}
 
-<span class="fc" id="L78">		GetSubmissionByIdResponse response =</span>
-<span class="fc" id="L79">				new GetSubmissionByIdResponse(submissionService.getSubmissionDetailsById(id));</span>
-<span class="fc" id="L80">		return ResponseEntity.ok(response);</span>
+<span class="fc" id="L80">		logger.info(&quot;Received call to fetch submission with ID {}&quot;, id);</span>
+
+<span class="fc" id="L82">		GetSubmissionByIdResponse response =</span>
+<span class="fc" id="L83">				new GetSubmissionByIdResponse(submissionService.getSubmissionDetailsById(id));</span>
+<span class="fc" id="L84">		return ResponseEntity.ok(response);</span>
 	}
 
 	/**
@@ -91,10 +95,10 @@ public class SubmissionController {
 	@PostMapping
 	@RateLimit(apiType = &quot;submit-code&quot;, capacity = 10, refillPeriodMinutes = 1)
 	public ResponseEntity&lt;SubmitCodeResponse&gt; submit(@Valid @RequestBody SubmitCodeRequest request) {
-<span class="fc" id="L94">		logger.info(&quot;Received request to create a new submission&quot;);</span>
+<span class="fc" id="L98">		logger.info(&quot;Received request to create a new submission&quot;);</span>
 
-<span class="fc" id="L96">		SubmitCodeResponse response = new SubmitCodeResponse(submissionService.submitCode(request));</span>
-<span class="fc" id="L97">		return new ResponseEntity&lt;&gt;(response, HttpStatus.CREATED);</span>
+<span class="fc" id="L100">		SubmitCodeResponse response = new SubmitCodeResponse(submissionService.submitCode(request));</span>
+<span class="fc" id="L101">		return new ResponseEntity&lt;&gt;(response, HttpStatus.CREATED);</span>
 	}
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
