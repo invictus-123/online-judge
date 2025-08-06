@@ -73,6 +73,10 @@ public class SubmissionController {
 	 */
 	@GetMapping("/{id}")
 	public ResponseEntity<GetSubmissionByIdResponse> getSubmissionById(@PathVariable Long id) {
+		if (id == null || id <= 0) {
+			throw new IllegalArgumentException("Submission ID must be a positive number");
+		}
+
 		logger.info("Received call to fetch submission with ID {}", id);
 
 		GetSubmissionByIdResponse response =
