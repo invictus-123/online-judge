@@ -1,53 +1,100 @@
-import { BrowserRouter as Router } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'react-hot-toast'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { Layout, AuthLayout } from './components/layout';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { HomePage } from './pages/HomePage';
+import { LoginPage } from './pages/auth/LoginPage';
+import { RegisterPage } from './pages/auth/RegisterPage';
+import './index.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
       retry: 1,
+      refetchOnWindowFocus: false,
     },
   },
-})
+});
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <div className="min-h-screen bg-gray-50">
-          <div className="container mx-auto px-4 py-8">
-            <header className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                DSA Platform
-              </h1>
-              <p className="text-lg text-gray-600">
-                Online Judge System - Frontend Ready
-              </p>
-            </header>
-            
-            <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                  Setup Complete!
-                </h2>
-                <p className="text-gray-600 mb-4">
-                  React app with Vite, TypeScript, Tailwind CSS, React Router, React Query, and other dependencies are ready to use.
-                </p>
-              </div>
+      <ThemeProvider>
+        <AuthProvider>
+          <Router>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+              <Routes>
+                <Route path="/auth/login" element={
+                  <ProtectedRoute requireAuth={false}>
+                    <AuthLayout>
+                      <LoginPage />
+                    </AuthLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/auth/register" element={
+                  <ProtectedRoute requireAuth={false}>
+                    <AuthLayout>
+                      <RegisterPage />
+                    </AuthLayout>
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/" element={<Layout />}>
+                  <Route index element={<HomePage />} />
+                  
+                  <Route path="/problems" element={
+                    <div className="flex min-h-[50vh] items-center justify-center">
+                      <div className="text-center">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Problems Page</h2>
+                        <p className="text-gray-600 dark:text-gray-400">Coming soon...</p>
+                      </div>
+                    </div>
+                  } />
+                  
+                  <Route path="/submissions" element={
+                    <div className="flex min-h-[50vh] items-center justify-center">
+                      <div className="text-center">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Submissions Page</h2>
+                        <p className="text-gray-600 dark:text-gray-400">Coming soon...</p>
+                      </div>
+                    </div>
+                  } />
+                  
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <div className="flex min-h-[50vh] items-center justify-center">
+                        <div className="text-center">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Profile Page</h2>
+                          <p className="text-gray-600 dark:text-gray-400">Coming soon...</p>
+                        </div>
+                      </div>
+                    </ProtectedRoute>
+                  } />
+                </Route>
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
             </div>
-          </div>
-        </div>
-        <Toaster position="top-right" />
-      </Router>
+          </Router>
+
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: 'var(--toast-bg)',
+                color: 'var(--toast-color)',
+                border: '1px solid var(--toast-border)',
+              },
+            }}
+          />
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
-  )
+  );
 }
 
-export default App
+export default App;
