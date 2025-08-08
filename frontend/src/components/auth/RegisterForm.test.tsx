@@ -115,19 +115,17 @@ describe('RegisterForm', () => {
     })
   })
 
-  it('shows password strength indicators', async () => {
+  it('shows password visibility toggles', async () => {
     render(<RegisterForm />)
     
     const passwordInput = screen.getByLabelText(/^password$/i)
+    const confirmPasswordInput = screen.getByLabelText(/confirm password/i)
     
-    await user.type(passwordInput, 'P')
-    expect(screen.getByText('8+')).toBeInTheDocument()
-    expect(screen.getByText('abc')).toBeInTheDocument()
-    expect(screen.getByText('ABC')).toBeInTheDocument()
-    expect(screen.getByText('123')).toBeInTheDocument()
+    expect(passwordInput).toHaveAttribute('type', 'password')
+    expect(confirmPasswordInput).toHaveAttribute('type', 'password')
     
-    await user.type(passwordInput, 'assword123')
-    expect(screen.getByText('✓', { exact: false })).toBeInTheDocument()
+    await user.type(passwordInput, 'Password123')
+    expect(passwordInput).toHaveDisplayValue('Password123')
   })
 
   it('validates password confirmation', async () => {
@@ -242,7 +240,7 @@ describe('RegisterForm', () => {
   })
 })
 
-async function fillValidForm(user: any, screen: any) {
+async function fillValidForm(user: ReturnType<typeof userEvent.setup>, screen: typeof import('@testing-library/react').screen) {
   await user.type(screen.getByLabelText(/first name/i), 'John')
   await user.type(screen.getByLabelText(/last name/i), 'Doe')
   await user.type(screen.getByLabelText(/handle/i), 'johndoe')

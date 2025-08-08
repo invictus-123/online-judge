@@ -94,9 +94,9 @@ describe('HomePage', () => {
     render(<HomePage />)
     
     expect(screen.getByText(/platform statistics/i)).toBeInTheDocument()
-    expect(screen.getByText(/500\+/)).toBeInTheDocument()
+    expect(screen.getByText('500+')).toBeInTheDocument()
     expect(screen.getByText(/problems available/i)).toBeInTheDocument()
-    expect(screen.getByText(/10k\+/)).toBeInTheDocument()
+    expect(screen.getByText('10K+')).toBeInTheDocument()
     expect(screen.getByText(/active users/i)).toBeInTheDocument()
   })
 
