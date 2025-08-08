@@ -7,10 +7,8 @@ import { AuthProvider } from '../../contexts/AuthContext';
 import { problemsService } from '../../services/problems-service';
 import type { ListProblemsResponse, ProblemSummaryUi } from '../../types/api';
 
-// Mock the problems service
 vi.mock('../../services/problems-service');
 
-// Mock auth hook to return authenticated state
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({
     isAuthenticated: true,
@@ -89,7 +87,6 @@ describe('ProblemsListPage', () => {
       </TestWrapper>
     );
 
-    // Check for loading skeletons
     const loadingElements = document.querySelectorAll('.animate-pulse');
     expect(loadingElements.length).toBeGreaterThan(0);
   });
@@ -109,16 +106,13 @@ describe('ProblemsListPage', () => {
       expect(screen.getByText('3. Median of Two Sorted Arrays')).toBeInTheDocument();
     });
 
-    // Check difficulty badges
     expect(screen.getByText('EASY')).toBeInTheDocument();
     expect(screen.getByText('MEDIUM')).toBeInTheDocument();
     expect(screen.getByText('HARD')).toBeInTheDocument();
 
-    // Check tags within problem cards specifically
     const problemCards = screen.getAllByRole('link');
     expect(problemCards.length).toBeGreaterThan(0);
     
-    // Check that we have tag elements in the problem cards
     const tagElements = document.querySelectorAll('.px-2.py-1.text-xs.rounded-md');
     expect(tagElements.length).toBeGreaterThan(0);
   });
@@ -133,7 +127,6 @@ describe('ProblemsListPage', () => {
     );
 
     await waitFor(() => {
-      // Check for solved and attempted status icons
       expect(screen.getByText('✅')).toBeInTheDocument();
       expect(screen.getByText('❌')).toBeInTheDocument();
     });
@@ -149,9 +142,8 @@ describe('ProblemsListPage', () => {
     );
 
     await waitFor(() => {
-      // Check for select elements by their placeholder or expected options
       const selects = screen.getAllByRole('combobox');
-      expect(selects.length).toBeGreaterThanOrEqual(3); // Difficulty, Tag, Status selects
+      expect(selects.length).toBeGreaterThanOrEqual(3);
     });
   });
 
@@ -172,7 +164,6 @@ describe('ProblemsListPage', () => {
   });
 
   it('displays error state when API call fails', async () => {
-    // Mock console.error to avoid error logs in test output
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(problemsService.list).mockRejectedValue(new Error('API Error'));
     

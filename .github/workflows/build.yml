@@ -107,6 +107,10 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.backend-test.result == 'success' || needs.frontend-test.result == 'success' || needs.backend-test.result == 'skipped' || needs.frontend-test.result == 'skipped')
     needs: [detect-changes, backend-test, frontend-test]
     runs-on: ubuntu-latest
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     permissions:
       contents: write
@@ -172,4 +176,5 @@ jobs:
           path: coverage-reports
 
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4

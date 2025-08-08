@@ -122,10 +122,12 @@ export function ProblemsListPage() {
 
   const renderProblemsContent = () => {
     if (isLoading) {
+      const skeletonItems = Array.from({ length: 6 }, (_, i) => `skeleton-${Date.now()}-${i}`);
+      
       return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, index) => (
-            <Card key={index} className="animate-pulse">
+          {skeletonItems.map((skeletonId) => (
+            <Card key={skeletonId} className="animate-pulse">
               <CardContent className="p-6">
                 <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
                 <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
@@ -237,7 +239,6 @@ export function ProblemsListPage() {
         </p>
       </div>
 
-      {/* Filters */}
       <div className="mb-6 space-y-4">
         <div className="flex flex-wrap gap-4">
           <div className="min-w-[150px]">
@@ -285,7 +286,6 @@ export function ProblemsListPage() {
           )}
         </div>
 
-        {/* Active Tags */}
         {selectedTags.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {selectedTags.map(tag => (
@@ -306,10 +306,8 @@ export function ProblemsListPage() {
         )}
       </div>
 
-      {/* Problems List */}
       {renderProblemsContent()}
 
-      {/* Pagination */}
       {data && data.problems.length > 0 && (
         <div className="mt-8 flex justify-center gap-2">
           <Button
