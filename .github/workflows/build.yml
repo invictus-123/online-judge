@@ -107,10 +107,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.backend-test.result == 'success' || needs.frontend-test.result == 'success' || needs.backend-test.result == 'skipped' || needs.frontend-test.result == 'skipped')
     needs: [detect-changes, backend-test, frontend-test]
     runs-on: ubuntu-latest
-    
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     permissions:
       contents: write
@@ -170,11 +166,9 @@ jobs:
           </html>
           EOF
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: coverage-reports
-
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./coverage-reports
+          publish_branch: gh-pages
