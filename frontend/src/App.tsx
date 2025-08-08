@@ -8,6 +8,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
+import { ProblemsListPage } from './pages/problems';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -45,14 +46,7 @@ function App() {
                 <Route path="/" element={<Layout />}>
                   <Route index element={<HomePage />} />
                   
-                  <Route path="/problems" element={
-                    <div className="flex min-h-[50vh] items-center justify-center">
-                      <div className="text-center">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Problems Page</h2>
-                        <p className="text-gray-600 dark:text-gray-400">Coming soon...</p>
-                      </div>
-                    </div>
-                  } />
+                  <Route path="/problems" element={<ProblemsListPage />} />
                   
                   <Route path="/submissions" element={
                     <div className="flex min-h-[50vh] items-center justify-center">
