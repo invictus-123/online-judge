@@ -54,11 +54,8 @@ export function ProblemsListPage() {
   });
 
   const handleDifficultyChange = (value: string) => {
-    if (value && value !== selectedDifficulties[0]) {
-      setSelectedDifficulties([value as ProblemDifficulty]);
-      setCurrentPage(1);
-    } else if (!value) {
-      setSelectedDifficulties([]);
+    if (value && !selectedDifficulties.includes(value as ProblemDifficulty)) {
+      setSelectedDifficulties([...selectedDifficulties, value as ProblemDifficulty]);
       setCurrentPage(1);
     }
   };
@@ -82,6 +79,11 @@ export function ProblemsListPage() {
 
   const removeTag = (tagToRemove: ProblemTag) => {
     setSelectedTags(selectedTags.filter(tag => tag !== tagToRemove));
+    setCurrentPage(1);
+  };
+
+  const removeDifficulty = (difficultyToRemove: ProblemDifficulty) => {
+    setSelectedDifficulties(selectedDifficulties.filter(difficulty => difficulty !== difficultyToRemove));
     setCurrentPage(1);
   };
 
@@ -243,12 +245,12 @@ export function ProblemsListPage() {
         <div className="flex flex-wrap gap-4">
           <div className="min-w-[150px]">
             <Select
-              value={selectedDifficulties[0] || ''}
+              value=""
               onChange={(e) => handleDifficultyChange(e.target.value)}
-              placeholder="Difficulty"
+              placeholder="Add Difficulty"
               options={[
-                { value: '', label: 'All Difficulties' },
-                ...DIFFICULTY_OPTIONS
+                { value: '', label: 'Select Difficulty' },
+                ...DIFFICULTY_OPTIONS.filter(option => !selectedDifficulties.includes(option.value as ProblemDifficulty))
               ]}
             />
           </div>
@@ -286,8 +288,22 @@ export function ProblemsListPage() {
           )}
         </div>
 
-        {selectedTags.length > 0 && (
+        {(selectedDifficulties.length > 0 || selectedTags.length > 0) && (
           <div className="flex flex-wrap gap-2">
+            {selectedDifficulties.map(difficulty => (
+              <span
+                key={difficulty}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+              >
+                {difficulty}
+                <button
+                  onClick={() => removeDifficulty(difficulty)}
+                  className="ml-1 text-green-600 hover:text-green-800 dark:text-green-300 dark:hover:text-green-100"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
             {selectedTags.map(tag => (
               <span
                 key={tag}
