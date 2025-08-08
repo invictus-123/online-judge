@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useReducer, useEffect, useMemo } from 'react';
+import { useReducer, useEffect, useMemo, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { authService, tokenStorage } from '../services';
 import type { LoginRequest, RegisterRequest } from '../types/api';
@@ -102,7 +102,7 @@ const getUserFromToken = (token: string): User | null => {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  const checkAuth = () => {
+  const checkAuth = useCallback(() => {
     const token = tokenStorage.get();
     
     if (token && isTokenValid(token)) {
@@ -115,9 +115,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     tokenStorage.remove();
     dispatch({ type: 'SET_INITIALIZING', payload: false });
-  };
+  }, []);
 
-  const login = async (credentials: LoginRequest): Promise<void> => {
+  const login = useCallback(async (credentials: LoginRequest): Promise<void> => {
     try {
       dispatch({ type: 'SET_AUTHENTICATING', payload: true });
       
@@ -142,9 +142,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       tokenStorage.remove();
       throw error;
     }
-  };
+  }, []);
 
-  const register = async (userData: RegisterRequest): Promise<void> => {
+  const register = useCallback(async (userData: RegisterRequest): Promise<void> => {
     try {
       dispatch({ type: 'SET_AUTHENTICATING', payload: true });
       
@@ -169,17 +169,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       tokenStorage.remove();
       throw error;
     }
-  };
+  }, []);
 
-  const logout = async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<void> => {
     tokenStorage.remove();
     dispatch({ type: 'CLEAR_USER' });
     toast.success('Logged out successfully');
-  };
+  }, []);
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
   const value: AuthContextValue = useMemo(() => ({
     ...state,

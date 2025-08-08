@@ -23,7 +23,7 @@ export const HomePage = () => {
         {isAuthenticated ? (
           <div className="mb-12">
             <h2 className="mb-4 text-2xl font-semibold text-gray-900 dark:text-white">
-              Welcome back, {user?.handle}! 👋
+              Welcome back, {user?.handle}!
             </h2>
             <p className="text-gray-600 dark:text-gray-300">
               Ready to solve some problems?
