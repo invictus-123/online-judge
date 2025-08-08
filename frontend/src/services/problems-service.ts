@@ -18,6 +18,10 @@ export const problemsService = {
       filters.tags.forEach(tag => params.append('tag', tag));
     }
     
+    if (filters.solvedStatuses?.length) {
+      filters.solvedStatuses.forEach(status => params.append('solvedStatus', status));
+    }
+    
     const response = await apiClient.get<ListProblemsResponse>(`/api/v1/problems/list?${params}`);
     return response.data;
   },

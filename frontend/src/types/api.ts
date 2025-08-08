@@ -9,24 +9,10 @@ export type ProblemDifficulty = typeof ProblemDifficulty[keyof typeof ProblemDif
 export const ProblemTag = {
   ARRAY: 'ARRAY',
   STRING: 'STRING',
-  HASH_TABLE: 'HASH_TABLE',
-  DYNAMIC_PROGRAMMING: 'DYNAMIC_PROGRAMMING',
-  MATH: 'MATH',
-  SORTING: 'SORTING',
   GREEDY: 'GREEDY',
-  DEPTH_FIRST_SEARCH: 'DEPTH_FIRST_SEARCH',
-  DATABASE: 'DATABASE',
-  BREADTH_FIRST_SEARCH: 'BREADTH_FIRST_SEARCH',
+  DP: 'DP',
   TREE: 'TREE',
-  BINARY_SEARCH: 'BINARY_SEARCH',
-  MATRIX: 'MATRIX',
-  TWO_POINTERS: 'TWO_POINTERS',
-  BINARY_TREE: 'BINARY_TREE',
-  BIT_MANIPULATION: 'BIT_MANIPULATION',
-  HEAP: 'HEAP',
-  STACK: 'STACK',
-  GRAPH: 'GRAPH',
-  DESIGN: 'DESIGN'
+  GRAPH: 'GRAPH'
 } as const;
 
 export type ProblemTag = typeof ProblemTag[keyof typeof ProblemTag];
@@ -91,6 +77,7 @@ export interface SubmitCodeRequest {
 export interface ProblemFilterRequest {
   difficulties?: ProblemDifficulty[];
   tags?: ProblemTag[];
+  solvedStatuses?: SolvedStatus[];
   page: number;
 }
 
