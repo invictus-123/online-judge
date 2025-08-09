@@ -3,7 +3,6 @@ package com.online.judge.backend.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -21,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -56,7 +56,7 @@ class UserServiceTest {
 		savedUser.setEmail(registerRequest.email());
 		savedUser.setPasswordHash("hashedPassword123");
 		savedUser.setRole(UserRole.USER);
-		when(userRepository.save(any(User.class))).thenReturn(savedUser);
+		when(userRepository.save(ArgumentMatchers.<User>any())).thenReturn(savedUser);
 
 		User result = userService.registerUser(registerRequest);
 
@@ -68,7 +68,7 @@ class UserServiceTest {
 		User capturedUser = userArgumentCaptor.getValue();
 		assertEquals("testuser", capturedUser.getHandle());
 		assertEquals(UserRole.USER, capturedUser.getRole());
-		verify(userRepository, times(1)).save(any(User.class));
+		verify(userRepository, times(1)).save(ArgumentMatchers.<User>any());
 	}
 
 	@Test
@@ -79,7 +79,7 @@ class UserServiceTest {
 				assertThrows(UserAlreadyExistsException.class, () -> userService.registerUser(registerRequest));
 
 		assertEquals("Handle '" + registerRequest.handle() + "' is already taken.", exception.getMessage());
-		verify(userRepository, never()).save(any(User.class));
+		verify(userRepository, never()).save(ArgumentMatchers.<User>any());
 	}
 
 	@Test
@@ -91,6 +91,6 @@ class UserServiceTest {
 				assertThrows(UserAlreadyExistsException.class, () -> userService.registerUser(registerRequest));
 
 		assertEquals("Email '" + registerRequest.email() + "' is already registered.", exception.getMessage());
-		verify(userRepository, never()).save(any(User.class));
+		verify(userRepository, never()).save(ArgumentMatchers.<User>any());
 	}
 }

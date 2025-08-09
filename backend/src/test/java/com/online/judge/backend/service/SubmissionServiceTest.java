@@ -37,6 +37,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -245,7 +246,7 @@ class SubmissionServiceTest {
 				PageRequest.of(page - 1, PAGE_SIZE, Sort.by("submittedAt").descending());
 		Page<Submission> submissionPage =
 				isEmpty ? Page.empty() : new PageImpl<>(submissions, expectedPageable, submissions.size());
-		when(submissionRepository.findAll(any(Specification.class), any(Pageable.class)))
+		when(submissionRepository.findAll(ArgumentMatchers.<Specification<Submission>>any(), any(Pageable.class)))
 				.thenReturn(submissionPage);
 
 		List<SubmissionSummaryUi> result = submissionService.listSubmissions(filterRequest);
@@ -253,7 +254,7 @@ class SubmissionServiceTest {
 		// Assertions
 		assertNotNull(result);
 		assertEquals(expectedResultCount, result.size());
-		verify(submissionRepository).findAll(any(Specification.class), any(Pageable.class));
+		verify(submissionRepository).findAll(ArgumentMatchers.<Specification<Submission>>any(), any(Pageable.class));
 	}
 
 	@Test
@@ -296,7 +297,7 @@ class SubmissionServiceTest {
 		SubmissionDetailsUi expectedSubmissionDetails = createSubmissionDetailsUi(submission);
 		when(userUtil.getCurrentAuthenticatedUser()).thenReturn(user);
 		when(problemRepository.findById(problemId)).thenReturn(Optional.of(problem));
-		when(submissionRepository.save(any(Submission.class))).thenReturn(submission);
+		when(submissionRepository.save(ArgumentMatchers.<Submission>any())).thenReturn(submission);
 
 		SubmissionDetailsUi submissionDetails = submissionService.submitCode(request);
 

@@ -8,7 +8,6 @@ import static com.online.judge.backend.repository.specification.BaseSpecificatio
 import static com.online.judge.backend.repository.specification.BaseSpecifications.hasAttributeInValues;
 import static com.online.judge.backend.repository.specification.BaseSpecifications.hasAttributeWithValue;
 import static com.online.judge.backend.repository.specification.BaseSpecifications.hasNestedAttributeInValues;
-import static com.online.judge.backend.repository.specification.BaseSpecifications.hasNestedAttributeWithValue;
 
 import com.online.judge.backend.model.Submission;
 import com.online.judge.backend.model.User;

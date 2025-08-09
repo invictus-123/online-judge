@@ -1,14 +1,16 @@
 package com.online.judge.backend.service;
 
+import static com.online.judge.backend.factory.ProblemFactory.createProblem;
+import static com.online.judge.backend.factory.SubmissionFactory.createSubmission;
 import static com.online.judge.backend.factory.UserFactory.createUser;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.online.judge.backend.model.Problem;
 import com.online.judge.backend.model.Submission;
 import com.online.judge.backend.model.User;
 import com.online.judge.backend.model.shared.SolvedStatus;
+import com.online.judge.backend.model.shared.SubmissionLanguage;
 import com.online.judge.backend.model.shared.SubmissionStatus;
 import com.online.judge.backend.repository.SubmissionRepository;
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
@@ -43,8 +46,14 @@ class SolvedStatusServiceTest {
 	void getSolvedStatus_whenUserHasSolvedProblem_returnsSolved() {
 		User user = createUser();
 		Long problemId = 1L;
+		Problem problem = createProblem();
+		problem.setId(problemId);
+		Submission solvedSubmission =
+				createSubmission(user, problem, SubmissionStatus.PASSED, SubmissionLanguage.JAVA, "code", 1.0, 512);
 
-		when(submissionRepository.exists(any(Specification.class))).thenReturn(true);
+		when(submissionRepository.findAll(ArgumentMatchers.<Specification<Submission>>any()))
+				.thenReturn(List.of(solvedSubmission)) // First call: solved problems
+				.thenReturn(List.of()); // Second call: failed attempts
 
 		SolvedStatus result = solvedStatusService.getSolvedStatus(user, problemId);
 		assertEquals(SolvedStatus.SOLVED, result);
@@ -54,10 +63,14 @@ class SolvedStatusServiceTest {
 	void getSolvedStatus_whenUserHasFailedAttemptButNotSolved_returnsFailedAttempt() {
 		User user = createUser();
 		Long problemId = 1L;
+		Problem problem = createProblem();
+		problem.setId(problemId);
+		Submission failedSubmission = createSubmission(
+				user, problem, SubmissionStatus.RUNTIME_ERROR, SubmissionLanguage.JAVA, "code", 1.0, 512);
 
-		when(submissionRepository.exists(any(Specification.class)))
-				.thenReturn(false) // Not solved
-				.thenReturn(true); // But failed attempt
+		when(submissionRepository.findAll(ArgumentMatchers.<Specification<Submission>>any()))
+				.thenReturn(List.of()) // First call: no solved problems
+				.thenReturn(List.of(failedSubmission)); // Second call: failed attempts
 
 		SolvedStatus result = solvedStatusService.getSolvedStatus(user, problemId);
 		assertEquals(SolvedStatus.FAILED_ATTEMPT, result);
@@ -68,9 +81,9 @@ class SolvedStatusServiceTest {
 		User user = createUser();
 		Long problemId = 1L;
 
-		when(submissionRepository.exists(any(Specification.class)))
-				.thenReturn(false) // Not solved
-				.thenReturn(false); // Not attempted
+		when(submissionRepository.findAll(ArgumentMatchers.<Specification<Submission>>any()))
+				.thenReturn(List.of()) // First call: no solved problems
+				.thenReturn(List.of()); // Second call: no failed attempts
 
 		SolvedStatus result = solvedStatusService.getSolvedStatus(user, problemId);
 		assertEquals(SolvedStatus.UNATTEMPTED, result);
@@ -92,19 +105,15 @@ class SolvedStatusServiceTest {
 	void getSolvedStatusForProblems_withMixedStatuses_returnsCorrectStatuses() {
 		User user = createUser();
 		List<Long> problemIds = List.of(1L, 2L, 3L);
-		Problem problem1 = new Problem();
+		Problem problem1 = createProblem();
 		problem1.setId(1L);
-		Problem problem2 = new Problem();
+		Problem problem2 = createProblem();
 		problem2.setId(2L);
-		Submission solvedSubmission = new Submission();
-		solvedSubmission.setProblem(problem1);
-		solvedSubmission.setUser(user);
-		solvedSubmission.setStatus(SubmissionStatus.PASSED);
-		Submission attemptedSubmission = new Submission();
-		attemptedSubmission.setProblem(problem2);
-		attemptedSubmission.setUser(user);
-		attemptedSubmission.setStatus(SubmissionStatus.RUNTIME_ERROR);
-		when(submissionRepository.findAll(any(Specification.class)))
+		Submission solvedSubmission =
+				createSubmission(user, problem1, SubmissionStatus.PASSED, SubmissionLanguage.JAVA, "code", 1.0, 512);
+		Submission attemptedSubmission = createSubmission(
+				user, problem2, SubmissionStatus.RUNTIME_ERROR, SubmissionLanguage.JAVA, "code", 1.0, 512);
+		when(submissionRepository.findAll(ArgumentMatchers.<Specification<Submission>>any()))
 				.thenReturn(List.of(solvedSubmission)) // First call: solved problems
 				.thenReturn(List.of(solvedSubmission, attemptedSubmission)); // Second call: attempted problems
 

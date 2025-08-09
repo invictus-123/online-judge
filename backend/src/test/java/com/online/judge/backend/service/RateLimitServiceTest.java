@@ -2,7 +2,6 @@ package com.online.judge.backend.service;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -15,6 +14,7 @@ import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -38,7 +38,7 @@ class RateLimitServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		when(rateLimitingConfig.resolveBucket(anyString(), anyInt(), any(Duration.class)))
+		when(rateLimitingConfig.resolveBucket(anyString(), anyInt(), ArgumentMatchers.<Duration>any()))
 				.thenReturn(bucket);
 	}
 
