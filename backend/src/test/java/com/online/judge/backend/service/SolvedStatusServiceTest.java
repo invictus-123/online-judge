@@ -51,16 +51,16 @@ class SolvedStatusServiceTest {
 	}
 
 	@Test
-	void getSolvedStatus_whenUserHasAttemptedButNotSolved_returnsAttempted() {
+	void getSolvedStatus_whenUserHasFailedAttemptButNotSolved_returnsFailedAttempt() {
 		User user = createUser();
 		Long problemId = 1L;
 
 		when(submissionRepository.exists(any(Specification.class)))
 				.thenReturn(false) // Not solved
-				.thenReturn(true); // But attempted
+				.thenReturn(true); // But failed attempt
 
 		SolvedStatus result = solvedStatusService.getSolvedStatus(user, problemId);
-		assertEquals(SolvedStatus.ATTEMPTED, result);
+		assertEquals(SolvedStatus.FAILED_ATTEMPT, result);
 	}
 
 	@Test
@@ -112,7 +112,7 @@ class SolvedStatusServiceTest {
 
 		assertEquals(3, result.size());
 		assertEquals(SolvedStatus.SOLVED, result.get(1L));
-		assertEquals(SolvedStatus.ATTEMPTED, result.get(2L));
+		assertEquals(SolvedStatus.FAILED_ATTEMPT, result.get(2L));
 		assertEquals(SolvedStatus.UNATTEMPTED, result.get(3L));
 	}
 }

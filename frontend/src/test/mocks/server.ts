@@ -49,7 +49,7 @@ export const handlers = [
           title: 'Binary Search',
           difficulty: 'MEDIUM',
           tags: ['BINARY_SEARCH'],
-          solvedStatus: 'ATTEMPTED'
+          solvedStatus: 'FAILED_ATTEMPT'
         }
       ],
       totalElements: 2,

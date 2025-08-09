@@ -19,7 +19,7 @@ export type ProblemTag = typeof ProblemTag[keyof typeof ProblemTag];
 
 export const SolvedStatus = {
   SOLVED: 'SOLVED',
-  ATTEMPTED: 'ATTEMPTED',
+  FAILED_ATTEMPT: 'FAILED_ATTEMPT',
   UNATTEMPTED: 'UNATTEMPTED'
 } as const;
 
