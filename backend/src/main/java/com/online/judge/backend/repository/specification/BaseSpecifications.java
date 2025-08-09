@@ -8,7 +8,7 @@ import org.springframework.data.jpa.domain.Specification;
 /**
  * Base utility class providing common specification methods for all entities.
  */
-public abstract class BaseSpecifications {
+public final class BaseSpecifications {
 
 	/**
 	 * Creates a specification that checks if an attribute value is in the provided collection.
@@ -139,7 +139,7 @@ public abstract class BaseSpecifications {
 		return result != null ? result : (root, query, criteriaBuilder) -> criteriaBuilder.disjunction();
 	}
 
-	protected BaseSpecifications() {
-		// Prevent direct instantiation, allow subclass instantiation
+	private BaseSpecifications() {
+		// Prevent instantiation
 	}
 }
