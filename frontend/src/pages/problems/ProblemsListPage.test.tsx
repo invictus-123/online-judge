@@ -29,7 +29,7 @@ const mockProblems: ProblemSummaryUi[] = [
     title: 'Add Two Numbers',
     difficulty: 'MEDIUM',
     tags: ['STRING', 'DP'],
-    solvedStatus: 'ATTEMPTED'
+    solvedStatus: 'FAILED_ATTEMPT'
   },
   {
     id: 3,

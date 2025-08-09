@@ -30,7 +30,7 @@ const TAG_OPTIONS = [
 
 const SOLVED_STATUS_OPTIONS = [
   { value: 'SOLVED', label: 'Solved' },
-  { value: 'ATTEMPTED', label: 'Attempted' },
+  { value: 'FAILED_ATTEMPT', label: 'Failed Attempt' },
   { value: 'UNATTEMPTED', label: 'Unattempted' }
 ] as const;
 
@@ -98,7 +98,7 @@ export function ProblemsListPage() {
     switch (status) {
       case 'SOLVED':
         return <span className="text-green-500 text-lg">✅</span>;
-      case 'ATTEMPTED':
+      case 'FAILED_ATTEMPT':
         return <span className="text-red-500 text-lg">❌</span>;
       default:
         return null;

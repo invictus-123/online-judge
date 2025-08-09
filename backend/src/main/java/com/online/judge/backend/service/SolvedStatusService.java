@@ -20,6 +20,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class SolvedStatusService {
+	private static final List<SubmissionStatus> FAILED_STATUSES =
+			List.of(SubmissionStatus.TIME_LIMIT_EXCEEDED, SubmissionStatus.MEMORY_LIMIT_EXCEEDED,
+					SubmissionStatus.COMPILATION_ERROR, SubmissionStatus.RUNTIME_ERROR);
 	private final SubmissionRepository submissionRepository;
 
 	public SolvedStatusService(SubmissionRepository submissionRepository) {
@@ -37,9 +40,10 @@ public class SolvedStatusService {
 			return SolvedStatus.SOLVED;
 		}
 
-		Specification<Submission> attemptedSpec = and(hasUser(user), hasProblem(problemId));
-		if (submissionRepository.exists(attemptedSpec)) {
-			return SolvedStatus.ATTEMPTED;
+		Specification<Submission> failedAttemptSpec =
+				and(hasUser(user), hasProblem(problemId), hasStatusIn(FAILED_STATUSES));
+		if (submissionRepository.exists(failedAttemptSpec)) {
+			return SolvedStatus.FAILED_ATTEMPT;
 		}
 
 		return SolvedStatus.UNATTEMPTED;
@@ -56,16 +60,17 @@ public class SolvedStatusService {
 				.map(submission -> submission.getProblem().getId())
 				.collect(Collectors.toSet());
 
-		Specification<Submission> attemptedSpec = and(hasUser(user), hasProblemIdIn(problemIds));
-		Set<Long> attemptedProblemIds = submissionRepository.findAll(attemptedSpec).stream()
+		Specification<Submission> failedAttemptSpec =
+				and(hasUser(user), hasProblemIdIn(problemIds), hasStatusIn(FAILED_STATUSES));
+		Set<Long> failedAttemptProblemIds = submissionRepository.findAll(failedAttemptSpec).stream()
 				.map(submission -> submission.getProblem().getId())
 				.collect(Collectors.toSet());
 
 		return problemIds.stream().collect(Collectors.toMap(id -> id, id -> {
 			if (solvedProblemIds.contains(id)) {
 				return SolvedStatus.SOLVED;
-			} else if (attemptedProblemIds.contains(id)) {
-				return SolvedStatus.ATTEMPTED;
+			} else if (failedAttemptProblemIds.contains(id)) {
+				return SolvedStatus.FAILED_ATTEMPT;
 			} else {
 				return SolvedStatus.UNATTEMPTED;
 			}
