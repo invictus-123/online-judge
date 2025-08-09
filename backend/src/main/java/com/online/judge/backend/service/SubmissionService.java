@@ -3,11 +3,15 @@ package com.online.judge.backend.service;
 import static com.online.judge.backend.converter.SubmissionConverter.toSubmissionDetailsUi;
 import static com.online.judge.backend.converter.SubmissionConverter.toSubmissionFromRequest;
 import static com.online.judge.backend.converter.SubmissionConverter.toSubmissionMessage;
-import static com.online.judge.backend.repository.specification.SubmissionSpecifications.and;
-import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasLanguageIn;
-import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasProblem;
-import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasStatusIn;
-import static com.online.judge.backend.repository.specification.SubmissionSpecifications.hasUser;
+import static com.online.judge.backend.repository.attributes.ProblemAttributes.ID;
+import static com.online.judge.backend.repository.attributes.SubmissionAttributes.LANGUAGE;
+import static com.online.judge.backend.repository.attributes.SubmissionAttributes.PROBLEM;
+import static com.online.judge.backend.repository.attributes.SubmissionAttributes.STATUS;
+import static com.online.judge.backend.repository.attributes.SubmissionAttributes.USER;
+import static com.online.judge.backend.repository.specification.BaseSpecifications.and;
+import static com.online.judge.backend.repository.specification.BaseSpecifications.hasAttributeInValues;
+import static com.online.judge.backend.repository.specification.BaseSpecifications.hasAttributeWithValue;
+import static com.online.judge.backend.repository.specification.BaseSpecifications.hasNestedAttributeWithValue;
 
 import com.online.judge.backend.converter.SubmissionConverter;
 import com.online.judge.backend.dto.filter.SubmissionFilterRequest;
@@ -87,10 +91,10 @@ public class SubmissionService {
 		}
 
 		Specification<Submission> specification = and(
-				hasUser(currentUser),
-				hasProblem(filterRequest.problemId()),
-				hasStatusIn(filterRequest.statuses()),
-				hasLanguageIn(filterRequest.languages()));
+				hasAttributeWithValue(USER, currentUser),
+				hasNestedAttributeWithValue(PROBLEM, ID, filterRequest.problemId()),
+				hasAttributeInValues(STATUS, filterRequest.statuses()),
+				hasAttributeInValues(LANGUAGE, filterRequest.languages()));
 
 		Pageable pageable = PageRequest.of(
 				filterRequest.page() - 1, pageSize, Sort.by("submittedAt").descending());

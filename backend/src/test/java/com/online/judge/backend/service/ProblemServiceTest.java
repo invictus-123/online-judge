@@ -9,7 +9,6 @@ import static com.online.judge.backend.factory.UserFactory.createUser;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -43,6 +42,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -184,7 +184,7 @@ class ProblemServiceTest {
 		Pageable expectedPageable =
 				PageRequest.of(page - 1, PAGE_SIZE, Sort.by("createdAt").descending());
 		Page<Problem> problemPage = new PageImpl<>(problems, expectedPageable, problems.size());
-		when(problemRepository.findAll(any(Specification.class), eq(expectedPageable)))
+		when(problemRepository.findAll(ArgumentMatchers.<Specification<Problem>>any(), eq(expectedPageable)))
 				.thenReturn(problemPage);
 		when(userUtil.getCurrentAuthenticatedUserOptional()).thenReturn(Optional.empty());
 		List<Long> problemIds = problems.stream().map(Problem::getId).toList();
@@ -254,7 +254,7 @@ class ProblemServiceTest {
 						"Test1 Input", "Test1 Output", /*isSample=*/ true, "Test1 Explanation")));
 		Problem problem = createProblemFromRequest(request);
 		problem.setCreatedBy(adminUser);
-		when(problemRepository.save(any(Problem.class))).thenReturn(problem);
+		when(problemRepository.save(ArgumentMatchers.<Problem>any())).thenReturn(problem);
 		ProblemDetailsUi expectedProblemDetails = createProblemDetailsUi(problem);
 
 		ProblemDetailsUi result = problemService.createProblem(request);

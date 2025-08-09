@@ -3,9 +3,12 @@ package com.online.judge.backend.service;
 import static com.online.judge.backend.converter.ProblemConverter.toProblemDetailsUi;
 import static com.online.judge.backend.converter.ProblemConverter.toProblemFromCreateProblemRequest;
 import static com.online.judge.backend.converter.ProblemConverter.toProblemSummaryUi;
-import static com.online.judge.backend.repository.specification.ProblemSpecifications.and;
-import static com.online.judge.backend.repository.specification.ProblemSpecifications.hasDifficultyIn;
-import static com.online.judge.backend.repository.specification.ProblemSpecifications.hasTagIn;
+import static com.online.judge.backend.repository.attributes.ProblemAttributes.DIFFICULTY;
+import static com.online.judge.backend.repository.attributes.ProblemAttributes.TAGS;
+import static com.online.judge.backend.repository.attributes.TagAttributes.TAG_NAME;
+import static com.online.judge.backend.repository.specification.BaseSpecifications.and;
+import static com.online.judge.backend.repository.specification.BaseSpecifications.hasAttributeInValues;
+import static com.online.judge.backend.repository.specification.BaseSpecifications.hasJoinedAttributeInValues;
 
 import com.online.judge.backend.dto.filter.ProblemFilterRequest;
 import com.online.judge.backend.dto.request.CreateProblemRequest;
@@ -19,6 +22,7 @@ import com.online.judge.backend.model.shared.SolvedStatus;
 import com.online.judge.backend.model.shared.UserRole;
 import com.online.judge.backend.repository.ProblemRepository;
 import com.online.judge.backend.util.UserUtil;
+import jakarta.persistence.criteria.JoinType;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -71,8 +75,9 @@ public class ProblemService {
 				filterRequest.page() - 1, pageSize, Sort.by("createdAt").descending());
 
 		// Build the specification dynamically based on filter criteria
-		Specification<Problem> specification =
-				and(hasDifficultyIn(filterRequest.difficulties()), hasTagIn(filterRequest.tags()));
+		Specification<Problem> specification = and(
+				hasAttributeInValues(DIFFICULTY, filterRequest.difficulties()),
+				hasJoinedAttributeInValues(TAGS, TAG_NAME, filterRequest.tags(), JoinType.INNER));
 
 		List<Problem> problems =
 				problemRepository.findAll(specification, pageable).getContent();
