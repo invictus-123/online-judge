@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WebConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.config</a> &gt; <span class="el_source">WebConfig.java</span></div><h1>WebConfig.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.config;
 
 import com.online.judge.backend.interceptor.RateLimitInterceptor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -10,24 +11,27 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 	private final RateLimitInterceptor rateLimitInterceptor;
+	private final String origin;
 
-<span class="fc" id="L14">	public WebConfig(RateLimitInterceptor rateLimitInterceptor) {</span>
-<span class="fc" id="L15">		this.rateLimitInterceptor = rateLimitInterceptor;</span>
-<span class="fc" id="L16">	}</span>
+	public WebConfig(
+<span class="fc" id="L17">			RateLimitInterceptor rateLimitInterceptor, @Value(&quot;${HOST_NAME:http://localhost:5173}&quot;) String origin) {</span>
+<span class="fc" id="L18">		this.rateLimitInterceptor = rateLimitInterceptor;</span>
+<span class="fc" id="L19">		this.origin = origin;</span>
+<span class="fc" id="L20">	}</span>
 
 	@Override
 	public void addInterceptors(@NonNull InterceptorRegistry registry) {
-<span class="fc" id="L20">		registry.addInterceptor(rateLimitInterceptor).addPathPatterns(&quot;/api/v1/**&quot;);</span>
-<span class="fc" id="L21">	}</span>
+<span class="fc" id="L24">		registry.addInterceptor(rateLimitInterceptor).addPathPatterns(&quot;/api/v1/**&quot;);</span>
+<span class="fc" id="L25">	}</span>
 
 	@Override
 	public void addCorsMappings(@NonNull CorsRegistry registry) {
-<span class="fc" id="L25">		registry.addMapping(&quot;/api/v1/**&quot;)</span>
-<span class="fc" id="L26">				.allowedOrigins(&quot;http://localhost:5173&quot;, &quot;http://127.0.0.1:5173&quot;)</span>
-<span class="fc" id="L27">				.allowedMethods(&quot;GET&quot;, &quot;POST&quot;, &quot;PUT&quot;, &quot;DELETE&quot;, &quot;OPTIONS&quot;)</span>
-<span class="fc" id="L28">				.allowedHeaders(&quot;*&quot;)</span>
-<span class="fc" id="L29">				.allowCredentials(true)</span>
-<span class="fc" id="L30">				.maxAge(3600);</span>
-<span class="fc" id="L31">	}</span>
+<span class="fc" id="L29">		registry.addMapping(&quot;/api/v1/**&quot;)</span>
+<span class="fc" id="L30">				.allowedOrigins(origin)</span>
+<span class="fc" id="L31">				.allowedMethods(&quot;GET&quot;, &quot;POST&quot;, &quot;PUT&quot;, &quot;DELETE&quot;, &quot;OPTIONS&quot;)</span>
+<span class="fc" id="L32">				.allowedHeaders(&quot;*&quot;)</span>
+<span class="fc" id="L33">				.allowCredentials(true)</span>
+<span class="fc" id="L34">				.maxAge(3600);</span>
+<span class="fc" id="L35">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

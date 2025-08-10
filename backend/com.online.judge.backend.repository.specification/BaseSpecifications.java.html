@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BaseSpecifications.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">backend</a> &gt; <a href="index.source.html" class="el_package">com.online.judge.backend.repository.specification</a> &gt; <span class="el_source">BaseSpecifications.java</span></div><h1>BaseSpecifications.java</h1><pre class="source lang-java linenums">package com.online.judge.backend.repository.specification;
+
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import java.util.List;
+import org.springframework.data.jpa.domain.Specification;
+
+/**
+ * Base utility class providing common specification methods for all entities.
+ */
+public final class BaseSpecifications {
+
+	/**
+	 * Creates a specification that checks if an attribute value is in the provided collection.
+	 *
+	 * @param attributeName The name of the entity attribute to check
+	 * @param values List of values to match against
+	 * @return Specification for value matching
+	 */
+	public static &lt;T, V&gt; Specification&lt;T&gt; hasAttributeInValues(String attributeName, List&lt;V&gt; values) {
+<span class="fc" id="L21">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="pc bpc" id="L22" title="3 of 4 branches missed.">			if (values == null || values.isEmpty()) {</span>
+<span class="fc" id="L23">				return criteriaBuilder.conjunction();</span>
+			}
+<span class="nc" id="L25">			return root.get(attributeName).in(values);</span>
+		};
+	}
+
+	/**
+	 * Creates a specification that checks if an attribute has a specific value.
+	 *
+	 * @param attributeName The name of the entity attribute to check
+	 * @param value The value to match against
+	 * @return Specification for exact value matching
+	 */
+	public static &lt;T, V&gt; Specification&lt;T&gt; hasAttributeWithValue(String attributeName, V value) {
+<span class="fc" id="L37">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">			if (value == null) {</span>
+<span class="fc" id="L39">				return criteriaBuilder.conjunction();</span>
+			}
+<span class="nc" id="L41">			return criteriaBuilder.equal(root.get(attributeName), value);</span>
+		};
+	}
+
+	/**
+	 * Creates a specification that checks if a nested attribute has a specific value.
+	 *
+	 * @param parentAttribute The name of the parent entity attribute
+	 * @param childAttribute The name of the child attribute to check
+	 * @param value The value to match against
+	 * @return Specification for nested attribute matching
+	 */
+	public static &lt;T, V&gt; Specification&lt;T&gt; hasNestedAttributeWithValue(
+			String parentAttribute, String childAttribute, V value) {
+<span class="fc" id="L55">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">			if (value == null) {</span>
+<span class="fc" id="L57">				return criteriaBuilder.conjunction();</span>
+			}
+<span class="nc" id="L59">			return criteriaBuilder.equal(root.get(parentAttribute).get(childAttribute), value);</span>
+		};
+	}
+
+	/**
+	 * Creates a specification that checks if a nested attribute value is in the provided collection.
+	 *
+	 * @param parentAttribute The name of the parent entity attribute
+	 * @param childAttribute The name of the child attribute to check
+	 * @param values List of values to match against
+	 * @return Specification for nested attribute collection matching
+	 */
+	public static &lt;T, V&gt; Specification&lt;T&gt; hasNestedAttributeInValues(
+			String parentAttribute, String childAttribute, List&lt;V&gt; values) {
+<span class="fc" id="L73">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="nc bnc" id="L74" title="All 4 branches missed.">			if (values == null || values.isEmpty()) {</span>
+<span class="nc" id="L75">				return criteriaBuilder.conjunction();</span>
+			}
+<span class="nc" id="L77">			return root.get(parentAttribute).get(childAttribute).in(values);</span>
+		};
+	}
+
+	/**
+	 * Creates a specification that checks if values in a joined entity match the provided
+	 * collection.
+	 *
+	 * @param joinAttribute The attribute to join on
+	 * @param targetAttribute The attribute in the joined entity to check
+	 * @param values List of values to match against
+	 * @param joinType The type of join to perform
+	 * @return Specification for joined entity filtering
+	 */
+	public static &lt;T, V&gt; Specification&lt;T&gt; hasJoinedAttributeInValues(
+			String joinAttribute, String targetAttribute, List&lt;V&gt; values, JoinType joinType) {
+<span class="fc" id="L93">		return (root, query, criteriaBuilder) -&gt; {</span>
+<span class="pc bpc" id="L94" title="3 of 4 branches missed.">			if (values == null || values.isEmpty()) {</span>
+<span class="fc" id="L95">				return criteriaBuilder.conjunction();</span>
+			}
+
+<span class="nc" id="L98">			Join&lt;T, ?&gt; join = root.join(joinAttribute, joinType);</span>
+<span class="nc" id="L99">			query.distinct(true);</span>
+<span class="nc" id="L100">			return join.get(targetAttribute).in(values);</span>
+		};
+	}
+
+	/**
+	 * Combines multiple specifications using AND logic.
+	 *
+	 * @param specifications Variable number of specifications to combine
+	 * @return Combined specification
+	 */
+	@SafeVarargs
+	public static &lt;T&gt; Specification&lt;T&gt; and(Specification&lt;T&gt;... specifications) {
+<span class="fc" id="L112">		Specification&lt;T&gt; result = null;</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">		for (Specification&lt;T&gt; spec : specifications) {</span>
+<span class="fc bfc" id="L114" title="All 2 branches covered.">			if (result == null) {</span>
+<span class="fc" id="L115">				result = spec;</span>
+			} else {
+<span class="fc" id="L117">				result = result.and(spec);</span>
+			}
+		}
+<span class="pc bpc" id="L120" title="1 of 2 branches missed.">		return result != null ? result : (root, query, criteriaBuilder) -&gt; criteriaBuilder.conjunction();</span>
+	}
+
+	/**
+	 * Combines multiple specifications using OR logic.
+	 *
+	 * @param specifications Variable number of specifications to combine
+	 * @return Combined specification
+	 */
+	@SafeVarargs
+	public static &lt;T&gt; Specification&lt;T&gt; or(Specification&lt;T&gt;... specifications) {
+<span class="nc" id="L131">		Specification&lt;T&gt; result = null;</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		for (Specification&lt;T&gt; spec : specifications) {</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">			if (result == null) {</span>
+<span class="nc" id="L134">				result = spec;</span>
+			} else {
+<span class="nc" id="L136">				result = result.or(spec);</span>
+			}
+		}
+<span class="nc bnc" id="L139" title="All 2 branches missed.">		return result != null ? result : (root, query, criteriaBuilder) -&gt; criteriaBuilder.disjunction();</span>
+	}
+
+	private BaseSpecifications() {
+		// Prevent instantiation
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
