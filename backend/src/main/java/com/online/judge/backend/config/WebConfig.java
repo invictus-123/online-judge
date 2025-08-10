@@ -13,7 +13,8 @@ public class WebConfig implements WebMvcConfigurer {
 	private final RateLimitInterceptor rateLimitInterceptor;
 	private final String origin;
 
-	public WebConfig(RateLimitInterceptor rateLimitInterceptor, @Value("${HOST_NAME}") String origin) {
+	public WebConfig(
+			RateLimitInterceptor rateLimitInterceptor, @Value("${HOST_NAME:http://localhost:5173}") String origin) {
 		this.rateLimitInterceptor = rateLimitInterceptor;
 		this.origin = origin;
 	}
@@ -26,7 +27,7 @@ public class WebConfig implements WebMvcConfigurer {
 	@Override
 	public void addCorsMappings(@NonNull CorsRegistry registry) {
 		registry.addMapping("/api/v1/**")
-				.allowedOrigins("http://localhost:5173", "http://127.0.0.1:5173", origin)
+				.allowedOrigins(origin)
 				.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 				.allowedHeaders("*")
 				.allowCredentials(true)
