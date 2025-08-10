@@ -4,7 +4,9 @@ import toast from 'react-hot-toast';
 import type { ErrorResponse } from '../types/api';
 import { tokenStorage } from './token-storage';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_HOST_NAME
+  ? `${import.meta.env.VITE_HOST_NAME}`
+  : 'http://localhost:8080';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

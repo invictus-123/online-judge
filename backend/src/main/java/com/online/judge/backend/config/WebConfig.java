@@ -1,6 +1,7 @@
 package com.online.judge.backend.config;
 
 import com.online.judge.backend.interceptor.RateLimitInterceptor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -10,9 +11,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 	private final RateLimitInterceptor rateLimitInterceptor;
+	private final String origin;
 
-	public WebConfig(RateLimitInterceptor rateLimitInterceptor) {
+	public WebConfig(RateLimitInterceptor rateLimitInterceptor, @Value("${HOST_NAME}") String origin) {
 		this.rateLimitInterceptor = rateLimitInterceptor;
+		this.origin = origin;
 	}
 
 	@Override
@@ -23,7 +26,7 @@ public class WebConfig implements WebMvcConfigurer {
 	@Override
 	public void addCorsMappings(@NonNull CorsRegistry registry) {
 		registry.addMapping("/api/v1/**")
-				.allowedOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+				.allowedOrigins("http://localhost:5173", "http://127.0.0.1:5173", origin)
 				.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 				.allowedHeaders("*")
 				.allowCredentials(true)
