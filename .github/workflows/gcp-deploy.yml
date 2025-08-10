@@ -131,9 +131,12 @@ jobs:
           gcloud storage buckets describe gs://${{ env.FRONTEND_BUCKET_NAME }} || \
           gcloud storage buckets create gs://${{ env.FRONTEND_BUCKET_NAME }} --location=${{ env.GCP_REGION }}
 
-      - name: Deploy frontend to GCS
-        run: |
-          gcloud storage rsync ./frontend/dist gs://${{ env.FRONTEND_BUCKET_NAME }} --recursive --delete-unmatched-destination-files
+      - name: 'Deploy frontend to GCS'
+        uses: 'google-github-actions/upload-cloud-storage@v2'
+        with:
+          path: 'frontend/dist'
+          destination: 'online-judge-frontend-${{ secrets.GCP_PROJECT_ID }}'
+          parent: false
 
       - name: Make GCS bucket public
         run: |
