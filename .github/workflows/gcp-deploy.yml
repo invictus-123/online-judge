@@ -117,8 +117,7 @@ jobs:
         run: |
           cd frontend
           npm install
-          echo "Building with VITE_GCS_BUCKET_URL: ${{ env.VITE_GCS_BUCKET_URL }}"
-          VITE_HOST_NAME=${{ env.HOST_NAME }} VITE_GCS_BUCKET_URL=${{ env.VITE_GCS_BUCKET_URL }} npm run build -- --base=${{ env.VITE_GCS_BUCKET_URL }}
+          VITE_HOST_NAME=${{ env.HOST_NAME }} VITE_GCS_BUCKET_URL=${{ env.VITE_GCS_BUCKET_URL }} npm run build
 
       - name: Authenticate to GCP
         uses: 'google-github-actions/auth@v1'
