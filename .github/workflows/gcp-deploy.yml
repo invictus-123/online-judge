@@ -233,7 +233,6 @@ jobs:
   deploy-backend:
     needs: build-backend
     runs-on: ubuntu-latest
-    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
     steps:
       - name: Authenticate to GCP
         uses: 'google-github-actions/auth@v1'
@@ -256,7 +255,6 @@ jobs:
   deploy-executor:
     needs: build-executor
     runs-on: ubuntu-latest
-    if: needs.detect-changes.outputs.executor-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
     steps:
       - name: Authenticate to GCP
         uses: 'google-github-actions/auth@v1'
@@ -278,7 +276,6 @@ jobs:
   deploy-frontend:
     needs: build-frontend
     runs-on: ubuntu-latest
-    if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
     steps:
       - name: Authenticate to GCP
         uses: 'google-github-actions/auth@v1'
