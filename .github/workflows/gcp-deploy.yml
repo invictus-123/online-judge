@@ -1,9 +1,9 @@
 name: Deploy to GCP
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -231,7 +231,7 @@ jobs:
           docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }}
 
   deploy-backend:
-    needs: [detect-changes, build-backend]
+    needs: build-backend
     runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
     steps:
@@ -254,7 +254,7 @@ jobs:
             --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://${{ env.VM_EXTERNAL_ID }}:5432/${{ env.SPRING_DATASOURCE_DB_NAME }},SPRING_DATASOURCE_USERNAME=${{ env.SPRING_DATASOURCE_USERNAME }},SPRING_DATASOURCE_PASSWORD=${{ env.SPRING_DATASOURCE_PASSWORD }},SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver,SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect,SPRING_RABBITMQ_HOST=${{ env.VM_EXTERNAL_ID }},SPRING_RABBITMQ_PORT=${{ env.RABBITMQ_PORT }},SPRING_RABBITMQ_USERNAME=${{ secrets.RABBITMQ_USER }},SPRING_RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }},FRONTEND_HOST_NAME=${{ env.FRONTEND_HOST_NAME }}"
 
   deploy-executor:
-    needs: [detect-changes, build-executor]
+    needs: build-executor
     runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.executor-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
     steps:
@@ -276,7 +276,7 @@ jobs:
             --set-env-vars="RABBITMQ_HOST=${{ env.VM_EXTERNAL_ID }},RABBITMQ_PORT=${{ env.RABBITMQ_PORT}},RABBITMQ_USER=${{ env.RABBITMQ_USERNAME }},RABBITMQ_PASS=${{ env.RABBITMQ_PASSWORD }}"
 
   deploy-frontend:
-    needs: [detect-changes, build-frontend]
+    needs: build-frontend
     runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
     steps:
@@ -296,11 +296,6 @@ jobs:
             --platform=managed \
             --allow-unauthenticated \
             --port=8080 \
-            --min-instances=0 \
-            --max-instances=100 \
-            --cpu=1 \
-            --memory=256Mi \
-            --concurrency=1000
 
       - name: Get frontend service URL
         run: |
