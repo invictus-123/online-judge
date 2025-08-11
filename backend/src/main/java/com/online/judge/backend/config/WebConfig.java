@@ -12,15 +12,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 	private final RateLimitInterceptor rateLimitInterceptor;
 	private final String origin;
-	private final String gcsOrigin;
 
 	public WebConfig(
 			RateLimitInterceptor rateLimitInterceptor, 
-			@Value("${HOST_NAME:http://localhost:5173}") String origin,
-			@Value("${GCS_FRONTEND_URL:}") String gcsOrigin) {
+			@Value("${FRONTEND_HOST_NAME:http://localhost:5173}") String origin) {
 		this.rateLimitInterceptor = rateLimitInterceptor;
 		this.origin = origin;
-		this.gcsOrigin = gcsOrigin;
 	}
 
 	@Override
@@ -30,12 +27,8 @@ public class WebConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addCorsMappings(@NonNull CorsRegistry registry) {
-		String[] allowedOrigins = gcsOrigin.isEmpty() 
-			? new String[]{origin}
-			: new String[]{origin, gcsOrigin};
-			
 		registry.addMapping("/api/v1/**")
-				.allowedOrigins(allowedOrigins)
+				.allowedOrigins(origin)
 				.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 				.allowedHeaders("*")
 				.allowCredentials(true)
