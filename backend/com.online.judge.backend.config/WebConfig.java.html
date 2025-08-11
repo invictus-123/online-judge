@@ -12,26 +12,34 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 	private final RateLimitInterceptor rateLimitInterceptor;
 	private final String origin;
+	private final String gcsOrigin;
 
 	public WebConfig(
-<span class="fc" id="L17">			RateLimitInterceptor rateLimitInterceptor, @Value(&quot;${HOST_NAME:http://localhost:5173}&quot;) String origin) {</span>
-<span class="fc" id="L18">		this.rateLimitInterceptor = rateLimitInterceptor;</span>
-<span class="fc" id="L19">		this.origin = origin;</span>
-<span class="fc" id="L20">	}</span>
+			RateLimitInterceptor rateLimitInterceptor, 
+			@Value(&quot;${HOST_NAME:http://localhost:5173}&quot;) String origin,
+<span class="fc" id="L20">			@Value(&quot;${GCS_FRONTEND_URL:}&quot;) String gcsOrigin) {</span>
+<span class="fc" id="L21">		this.rateLimitInterceptor = rateLimitInterceptor;</span>
+<span class="fc" id="L22">		this.origin = origin;</span>
+<span class="fc" id="L23">		this.gcsOrigin = gcsOrigin;</span>
+<span class="fc" id="L24">	}</span>
 
 	@Override
 	public void addInterceptors(@NonNull InterceptorRegistry registry) {
-<span class="fc" id="L24">		registry.addInterceptor(rateLimitInterceptor).addPathPatterns(&quot;/api/v1/**&quot;);</span>
-<span class="fc" id="L25">	}</span>
+<span class="fc" id="L28">		registry.addInterceptor(rateLimitInterceptor).addPathPatterns(&quot;/api/v1/**&quot;);</span>
+<span class="fc" id="L29">	}</span>
 
 	@Override
 	public void addCorsMappings(@NonNull CorsRegistry registry) {
-<span class="fc" id="L29">		registry.addMapping(&quot;/api/v1/**&quot;)</span>
-<span class="fc" id="L30">				.allowedOrigins(origin)</span>
-<span class="fc" id="L31">				.allowedMethods(&quot;GET&quot;, &quot;POST&quot;, &quot;PUT&quot;, &quot;DELETE&quot;, &quot;OPTIONS&quot;)</span>
-<span class="fc" id="L32">				.allowedHeaders(&quot;*&quot;)</span>
-<span class="fc" id="L33">				.allowCredentials(true)</span>
-<span class="fc" id="L34">				.maxAge(3600);</span>
-<span class="fc" id="L35">	}</span>
+<span class="pc bpc" id="L33" title="1 of 2 branches missed.">		String[] allowedOrigins = gcsOrigin.isEmpty() </span>
+<span class="fc" id="L34">			? new String[]{origin}</span>
+<span class="pc" id="L35">			: new String[]{origin, gcsOrigin};</span>
+			
+<span class="fc" id="L37">		registry.addMapping(&quot;/api/v1/**&quot;)</span>
+<span class="fc" id="L38">				.allowedOrigins(allowedOrigins)</span>
+<span class="fc" id="L39">				.allowedMethods(&quot;GET&quot;, &quot;POST&quot;, &quot;PUT&quot;, &quot;DELETE&quot;, &quot;OPTIONS&quot;)</span>
+<span class="fc" id="L40">				.allowedHeaders(&quot;*&quot;)</span>
+<span class="fc" id="L41">				.allowCredentials(true)</span>
+<span class="fc" id="L42">				.maxAge(3600);</span>
+<span class="fc" id="L43">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
