@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '../ui';
@@ -27,10 +26,8 @@ export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const { login, isAuthenticating } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/';
+
 
   const {
     register,
@@ -54,7 +51,7 @@ export const LoginForm = () => {
       };
 
       await login(loginRequest);
-      navigate(from, { replace: true });
+      // ProtectedRoute will handle the redirect after authentication
     } catch (error) {
       if (error instanceof Error) {
         const message = error.message.toLowerCase();

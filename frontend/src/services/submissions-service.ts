@@ -38,7 +38,7 @@ export const submissionsService = {
   },
   
   submit: async (data: SubmitCodeRequest): Promise<SubmitCodeResponse> => {
-    const response = await apiClient.post<SubmitCodeResponse>('/api/v1/submissions', data);
-    return response.data;
+    const response = await apiClient.post<{submissionDetails: any}>('/api/v1/submissions', data);
+    return { submission: response.data.submissionDetails };
   }
 };

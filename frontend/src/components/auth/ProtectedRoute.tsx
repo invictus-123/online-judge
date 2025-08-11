@@ -27,7 +27,10 @@ export const ProtectedRoute = ({ children, requireAuth = true }: ProtectedRouteP
   }
 
   if (!requireAuth && isAuthenticated) {
-    const from = location.state?.from?.pathname || '/';
+    // Check for redirect parameter in URL
+    const searchParams = new URLSearchParams(location.search);
+    const redirectParam = searchParams.get('redirect');
+    const from = redirectParam || location.state?.from?.pathname || '/';
     return <Navigate to={from} replace />;
   }
 

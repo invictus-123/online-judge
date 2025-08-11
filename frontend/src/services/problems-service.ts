@@ -27,7 +27,7 @@ export const problemsService = {
   },
   
   getById: async (id: number): Promise<GetProblemByIdResponse> => {
-    const response = await apiClient.get<GetProblemByIdResponse>(`/api/v1/problems/${id}`);
-    return response.data;
+    const response = await apiClient.get<{problemDetails: any}>(`/api/v1/problems/${id}`);
+    return { problem: response.data.problemDetails };
   }
 };
