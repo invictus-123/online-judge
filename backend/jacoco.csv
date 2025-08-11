@@ -65,7 +65,7 @@ backend,com.online.judge.backend.queue,StatusListener,50,13,0,0,15,5,1,2,1,2
 backend,com.online.judge.backend.queue,ResultListener,64,16,0,0,21,6,1,2,1,2
 backend,com.online.judge.backend.queue,SubmissionPublisher,25,43,4,0,9,13,3,4,1,4
 backend,com.online.judge.backend.config,JwtAuthFilter,0,74,4,6,0,19,4,3,0,2
-backend,com.online.judge.backend.config,RateLimitingConfig,94,59,4,0,24,15,8,5,6,5
+backend,com.online.judge.backend.config,RateLimitingConfig,87,66,3,1,21,18,7,6,5,6
 backend,com.online.judge.backend.config,OpenApiConfig,0,3,0,0,0,1,0,1,0,1
 backend,com.online.judge.backend.config,WebConfig,0,69,0,0,0,13,0,3,0,3
 backend,com.online.judge.backend.config,SecurityConfig,0,117,0,0,0,21,0,10,0,10
