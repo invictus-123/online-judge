@@ -116,7 +116,7 @@ jobs:
         run: |
           cd frontend
           npm install
-          VITE_HOST_NAME=${{ env.HOST_NAME }} VITE_GCS_BUCKET_URL=https://storage.googleapis.com/${{ env.FRONTEND_BUCKET_NAME }}/ npm run build
+          VITE_HOST_NAME=${{ env.HOST_NAME }} VITE_GCS_BUCKET_URL=https://storage.googleapis.com/online-judge-frontend-${{ secrets.GCP_PROJECT_ID }}/ npm run build
 
       - name: Authenticate to GCP
         uses: 'google-github-actions/auth@v1'
