@@ -1,11 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 
-export default defineConfig(() => {
-  const gcsBucketUrl = process.env.VITE_GCS_BUCKET_URL || './';
-
-  return {
-    plugins: [react()],
-    base: gcsBucketUrl,
-  };
+export default defineConfig({
+  plugins: [react()],
+  base: '/',
+  server: {
+    port: 5173,
+  },
 });
