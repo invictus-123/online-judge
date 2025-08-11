@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
 import { Code2, FileText, BarChart3, Users, Trophy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button } from '../components/ui';
-import { useAuth } from '../hooks';
+import { useAuth, useDocumentTitle } from '../hooks';
 
 export const HomePage = () => {
   const { isAuthenticated, user } = useAuth();
+  useDocumentTitle('');
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">

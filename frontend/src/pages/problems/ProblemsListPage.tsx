@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
 import { problemsService } from '../../services/problems-service';
 import { useAuth } from '../../hooks/useAuth';
+import { useDocumentTitle } from '../../hooks';
 import type { 
   ProblemDifficulty, 
   ProblemTag, 
@@ -36,6 +37,7 @@ const SOLVED_STATUS_OPTIONS = [
 
 export function ProblemsListPage() {
   const { isAuthenticated } = useAuth();
+  useDocumentTitle('Problems');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedDifficulties, setSelectedDifficulties] = useState<ProblemDifficulty[]>([]);
   const [selectedTags, setSelectedTags] = useState<ProblemTag[]>([]);
