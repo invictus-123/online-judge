@@ -23,8 +23,37 @@ env:
   VITE_GCS_BUCKET_URL: https://storage.googleapis.com/online-judge-frontend-${{ secrets.GCP_PROJECT_ID }}/
 
 jobs:
-  build-images:
+  detect-changes:
     runs-on: ubuntu-latest
+    outputs:
+      frontend-changed: ${{ steps.changes.outputs.frontend }}
+      backend-changed: ${{ steps.changes.outputs.backend }}
+      executor-changed: ${{ steps.changes.outputs.executor }}
+      deploy-config-changed: ${{ steps.changes.outputs.deploy-config }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            backend:
+              - 'backend/**'
+            executor:
+              - 'executor/**'
+            deploy-config:
+              - '.github/workflows/gcp-deploy.yml'
+
+  setup-gcp:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.executor-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -48,10 +77,48 @@ jobs:
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
 
+  build-backend:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, setup-gcp]
+    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Authenticate to GCP
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v1'
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
       - name: Build and push backend image
         run: |
           docker build -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} ./backend
           docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }}
+
+  build-executor:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, setup-gcp]
+    if: needs.detect-changes.outputs.executor-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Authenticate to GCP
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v1'
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
 
       - name: Build and push executor image
         run: |
@@ -59,8 +126,9 @@ jobs:
           docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.EXECUTOR_SERVICE_NAME }}:${{ github.sha }}
 
   deploy-backend:
-    needs: build-images
+    needs: [detect-changes, build-backend]
     runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
     steps:
       - name: Authenticate to GCP
         uses: 'google-github-actions/auth@v1'
@@ -81,8 +149,9 @@ jobs:
             --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://${{ env.VM_EXTERNAL_ID }}:5432/${{ env.SPRING_DATASOURCE_DB_NAME }},SPRING_DATASOURCE_USERNAME=${{ env.SPRING_DATASOURCE_USERNAME }},SPRING_DATASOURCE_PASSWORD=${{ env.SPRING_DATASOURCE_PASSWORD }},SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver,SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect,SPRING_RABBITMQ_HOST=${{ env.VM_EXTERNAL_ID }},SPRING_RABBITMQ_PORT=${{ env.RABBITMQ_PORT }},SPRING_RABBITMQ_USERNAME=${{ secrets.RABBITMQ_USER }},SPRING_RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }},HOST_NAME=${{ env.HOST_NAME }},GCS_FRONTEND_URL=https://storage.googleapis.com"
 
   deploy-executor:
-    needs: deploy-backend
+    needs: [detect-changes, build-executor]
     runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.executor-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
     steps:
       - name: Authenticate to GCP
         uses: 'google-github-actions/auth@v1'
@@ -102,8 +171,9 @@ jobs:
             --set-env-vars="RABBITMQ_HOST=${{ env.VM_EXTERNAL_ID }},RABBITMQ_PORT=${{ env.RABBITMQ_PORT}},RABBITMQ_USER=${{ env.RABBITMQ_USERNAME }},RABBITMQ_PASS=${{ env.RABBITMQ_PASSWORD }}"
 
   deploy-frontend:
-    needs: deploy-backend
+    needs: detect-changes
     runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.deploy-config-changed == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
