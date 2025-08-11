@@ -20,6 +20,7 @@ env:
   EXECUTOR_SERVICE_NAME: online-judge-executor
   FRONTEND_BUCKET_NAME: online-judge-frontend-${{ secrets.GCP_PROJECT_ID }}
   HOST_NAME: ${{ secrets.HOST_NAME }}
+  VITE_GCS_BUCKET_URL: https://storage.googleapis.com/online-judge-frontend-${{ secrets.GCP_PROJECT_ID }}/
 
 jobs:
   build-images:
@@ -116,7 +117,8 @@ jobs:
         run: |
           cd frontend
           npm install
-          VITE_HOST_NAME=${{ env.HOST_NAME }} VITE_GCS_BUCKET_URL=https://storage.googleapis.com/online-judge-frontend-${{ secrets.GCP_PROJECT_ID }}/ npm run build
+          echo "Building with VITE_GCS_BUCKET_URL: ${{ env.VITE_GCS_BUCKET_URL }}"
+          VITE_HOST_NAME=${{ env.HOST_NAME }} VITE_GCS_BUCKET_URL=${{ env.VITE_GCS_BUCKET_URL }} npm run build -- --base=${{ env.VITE_GCS_BUCKET_URL }}
 
       - name: Authenticate to GCP
         uses: 'google-github-actions/auth@v1'
@@ -135,7 +137,7 @@ jobs:
         uses: 'google-github-actions/upload-cloud-storage@v2'
         with:
           path: 'frontend/dist'
-          destination: 'online-judge-frontend-${{ secrets.GCP_PROJECT_ID }}'
+          destination: 'online-judge-frontend-${{ env.GCP_PROJECT_ID }}'
           parent: false
 
       - name: Make GCS bucket public
