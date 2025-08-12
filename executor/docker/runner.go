@@ -59,6 +59,11 @@ var langConfigs = map[string]LanguageConfig{
 
 // RunInContainer creates a Docker container, executes the code, and returns the result.
 func RunInContainer(language, code, input string) (*ExecutionResult, error) {
+	return RunInContainerWithLimits(language, code, input, 2.0, 256*1024*1024) // 2 seconds, 256MB
+}
+
+// RunInContainerWithLimits creates a Docker container with custom limits, executes the code, and returns the result.
+func RunInContainerWithLimits(language, code, input string, timeLimitSeconds float64, memoryLimitBytes int64) (*ExecutionResult, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -102,7 +107,7 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 	}, &container.HostConfig{
 		Binds: []string{fmt.Sprintf("%s:/app", tempDir)},
 		Resources: container.Resources{
-			Memory: 256 * 1024 * 1024, // 256MB memory limit
+			Memory: memoryLimitBytes,
 		},
 	}, nil, nil, "oj-"+uuid.New().String())
 	if err != nil {
@@ -199,8 +204,9 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 		done <- true
 	}()
 
+	timeLimit := time.Duration(timeLimitSeconds * float64(time.Second))
 	select {
-	case <-time.After(2 * time.Second): // 2-second time limit
+	case <-time.After(timeLimit):
 		cli.ContainerKill(ctx, resp.ID, "SIGKILL")
 		return &ExecutionResult{Status: "TIME_LIMIT_EXCEEDED", Output: outputBuffer.String()}, nil
 	case <-done:
@@ -231,9 +237,19 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 	stats.Body.Close()
 
 	memoryUsageKB := int64(statsData.MemoryStats.Usage / 1024)
+	
+	// Check memory limit
+	if statsData.MemoryStats.Usage > uint64(memoryLimitBytes) {
+		return &ExecutionResult{
+			Status:     "MEMORY_LIMIT_EXCEEDED",
+			Output:     strings.TrimSpace(outputBuffer.String()),
+			TimeMillis: execTime.Milliseconds(),
+			MemoryKB:   memoryUsageKB,
+		}, nil
+	}
 
 	return &ExecutionResult{
-		Status:     "ACCEPTED", // This should be compared with expected output later
+		Status:     "ACCEPTED",
 		Output:     strings.TrimSpace(outputBuffer.String()),
 		TimeMillis: execTime.Milliseconds(),
 		MemoryKB:   memoryUsageKB,
