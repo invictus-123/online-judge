@@ -6,6 +6,7 @@ on:
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GCP_REGION: us-central1
+  GCP_ZONE: us-central1-c
   VM_EXTERNAL_ID: ${{ secrets.VM_EXTERNAL_ID }}
   SPRING_DATASOURCE_DB_NAME: ${{ secrets.POSTGRES_DB }}
   SPRING_DATASOURCE_USERNAME: ${{ secrets.POSTGRES_USER }}
@@ -272,6 +273,9 @@ jobs:
     needs: build-executor
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Authenticate to GCP
         uses: 'google-github-actions/auth@v1'
         with:
@@ -280,15 +284,50 @@ jobs:
       - name: Set up Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v1'
 
-      - name: Deploy executor to Cloud Run
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+      - name: Deploy executor to the VM
         run: |
-          gcloud run deploy ${{ env.EXECUTOR_SERVICE_NAME }} \
-            --image=${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.EXECUTOR_SERVICE_NAME }}:${{ github.sha }} \
-            --region=${{ env.GCP_REGION }} \
-            --platform=managed \
-            --allow-unauthenticated \
-            --port=8080 \
-            --set-env-vars="RABBITMQ_HOST=${{ env.VM_EXTERNAL_ID }},RABBITMQ_PORT=${{ env.RABBITMQ_PORT}},RABBITMQ_USER=${{ env.RABBITMQ_USERNAME }},RABBITMQ_PASS=${{ env.RABBITMQ_PASSWORD }}"
+          EXECUTOR_IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.EXECUTOR_SERVICE_NAME }}:${{ github.sha }}"
+
+          gcloud compute scp executor/deployment/vm-startup-script.sh ${{ env.VM_EXTERNAL_ID }}:/tmp/setup-executor.sh \
+            --zone=${{ env.GCP_ZONE }}
+
+          gcloud compute ssh ${{ env.VM_EXTERNAL_ID }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --command="
+              sudo chmod +x /tmp/setup-executor.sh
+
+              sudo /tmp/setup-executor.sh
+
+              sudo systemctl stop online-judge-executor || true
+              sudo docker stop online-judge-executor || true
+              sudo docker rm online-judge-executor || true
+
+              sudo docker pull $EXECUTOR_IMAGE
+
+              sudo docker run -d \
+                --name online-judge-executor \
+                --restart unless-stopped \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                -e RABBITMQ_HOST=${{ env.VM_EXTERNAL_ID }} \
+                -e RABBITMQ_PORT=${{ env.RABBITMQ_PORT }} \
+                -e RABBITMQ_USER=${{ env.RABBITMQ_USERNAME }} \
+                -e RABBITMQ_PASS=${{ env.RABBITMQ_PASSWORD }} \
+                $EXECUTOR_IMAGE
+            "
+
+      - name: Verify executor deployment
+        run: |
+          gcloud compute ssh ${{ env.VM_EXTERNAL_ID }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --command="
+              echo 'Checking executor container status:'
+              sudo docker ps | grep online-judge-executor || echo 'Container not found'
+              echo 'Checking executor logs:'
+              sudo docker logs online-judge-executor --tail 20 || echo 'No logs available'
+            "
 
   deploy-frontend:
     needs: build-frontend
