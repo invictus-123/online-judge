@@ -98,7 +98,7 @@ func (w *Worker) process(job amqp091.Delivery) {
 			Output:     base64.StdEncoding.EncodeToString([]byte(execResult.Output)),
 			Status:     status,
 			TimeTaken:  float64(execResult.TimeMillis) / 1000,
-			MemoryUsed: execResult.MemoryKB / 1024,
+			MemoryUsed: execResult.MemoryKB,
 		})
 	}
 

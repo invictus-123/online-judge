@@ -57,8 +57,8 @@ func TestJavaConfig(t *testing.T) {
 	if len(config.CompileCmd) != 2 || config.CompileCmd[0] != "javac" || config.CompileCmd[1] != "Main.java" {
 		t.Errorf("Java compile command = %v, want [javac Main.java]", config.CompileCmd)
 	}
-	if len(config.ExecuteCmd) != 2 || config.ExecuteCmd[0] != "java" || config.ExecuteCmd[1] != "Main" {
-		t.Errorf("Java execute command = %v, want [java Main]", config.ExecuteCmd)
+	if len(config.ExecuteCmd) != 4 || config.ExecuteCmd[0] != "java" || config.ExecuteCmd[1] != "-cp" || config.ExecuteCmd[2] != "." || config.ExecuteCmd[3] != "Main" {
+		t.Errorf("Java execute command = %v, want [java -cp . Main]", config.ExecuteCmd)
 	}
 }
 
