@@ -331,7 +331,7 @@ export function ProblemDetailPage() {
               <div className="flex-1 border rounded-lg overflow-hidden">
                 <Editor
                   height="100%"
-                  language={selectedLanguage.toLowerCase() === 'cpp' ? 'cpp' : selectedLanguage.toLowerCase()}
+                  language={selectedLanguage.toLowerCase()}
                   value={code}
                   onChange={handleCodeChange}
                   theme={theme === 'dark' ? 'vs-dark' : 'light'}
