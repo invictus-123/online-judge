@@ -90,10 +90,10 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 	}
 	io.Copy(ioutil.Discard, reader) // Wait for pull to complete
 
-	// Create the container
+	// Create the container with a long-running command so we can exec into it
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:        config.Image,
-		Cmd:          config.ExecuteCmd,
+		Cmd:          []string{"sleep", "300"}, // Keep container alive for 5 minutes
 		WorkingDir:   "/app",
 		Tty:          false,
 		OpenStdin:    true,
@@ -115,6 +115,11 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 			log.Printf("Failed to remove container %s: %v", resp.ID, err)
 		}
 	}()
+
+	// Start the container so we can execute commands in it
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		return nil, fmt.Errorf("failed to start container: %w", err)
+	}
 
 	// --- COMPILE STEP ---
 	if config.CompileCmd != nil {
@@ -153,54 +158,63 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 	}
 
 	// --- EXECUTION STEP ---
-	// Attach to the container before starting
-	attach, err := cli.ContainerAttach(ctx, resp.ID, types.ContainerAttachOptions{
-		Stream: true,
-		Stdin:  true,
-		Stdout: true,
-		Stderr: true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach to container: %w", err)
+	// Execute the program using docker exec
+	log.Printf("Executing code in container %s", resp.ID)
+	execConfig := types.ExecConfig{
+		Cmd:          config.ExecuteCmd,
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
 	}
-	defer attach.Close()
+	execID, err := cli.ContainerExecCreate(ctx, resp.ID, execConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create execution exec: %w", err)
+	}
 
-	// Start the container
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		return nil, fmt.Errorf("failed to start container: %w", err)
+	execResp, err := cli.ContainerExecAttach(ctx, execID.ID, types.ExecStartCheck{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach to execution exec: %w", err)
+	}
+	defer execResp.Close()
+
+	// Start execution
+	if err := cli.ContainerExecStart(ctx, execID.ID, types.ExecStartCheck{}); err != nil {
+		return nil, fmt.Errorf("failed to start execution exec: %w", err)
 	}
 
 	// Write input to stdin
-	_, err = attach.Conn.Write([]byte(input))
+	_, err = execResp.Conn.Write([]byte(input))
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to stdin: %w", err)
 	}
-	attach.CloseWrite() // Close stdin to signal end of input
-
-	// Wait for container to finish, with a timeout
-	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	execResp.CloseWrite() // Close stdin to signal end of input
 
 	startTime := time.Now()
 	var outputBuffer bytes.Buffer
 
-	// Read output in a separate goroutine
+	// Read output with timeout
+	done := make(chan bool)
 	go func() {
-		// Demultiplex the stdout and stderr streams
-		io.Copy(&outputBuffer, attach.Reader)
+		io.Copy(&outputBuffer, execResp.Reader)
+		done <- true
 	}()
 
 	select {
 	case <-time.After(2 * time.Second): // 2-second time limit
 		cli.ContainerKill(ctx, resp.ID, "SIGKILL")
 		return &ExecutionResult{Status: "TIME_LIMIT_EXCEEDED", Output: outputBuffer.String()}, nil
-	case err := <-errCh:
-		if err != nil {
-			return nil, fmt.Errorf("error while waiting for container: %w", err)
-		}
-	case status := <-statusCh:
-		if status.StatusCode != 0 {
-			return &ExecutionResult{Status: "RUNTIME_ERROR", Output: outputBuffer.String()}, nil
-		}
+	case <-done:
+		// Execution completed, check exit code
+	}
+
+	// Check execution result
+	inspect, err := cli.ContainerExecInspect(ctx, execID.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect execution exec: %w", err)
+	}
+
+	if inspect.ExitCode != 0 {
+		return &ExecutionResult{Status: "RUNTIME_ERROR", Output: outputBuffer.String()}, nil
 	}
 
 	execTime := time.Since(startTime)
