@@ -15,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 /** Security configuration class. */
 @Configuration
@@ -34,10 +35,15 @@ public class SecurityConfig {
 	};
 
 	private final JwtAuthFilter jwtAuthFilter;
+	private final CorsConfigurationSource corsConfigurationSource;
 	private final CustomUserDetailsService userDetailsService;
 
-	public SecurityConfig(JwtAuthFilter jwtAuthFilter, CustomUserDetailsService userDetailsService) {
+	public SecurityConfig(
+			JwtAuthFilter jwtAuthFilter,
+			CorsConfigurationSource corsConfigurationSource,
+			CustomUserDetailsService userDetailsService) {
 		this.jwtAuthFilter = jwtAuthFilter;
+		this.corsConfigurationSource = corsConfigurationSource;
 		this.userDetailsService = userDetailsService;
 	}
 
@@ -63,6 +69,7 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		return http.csrf(csrf -> csrf.disable())
+				.cors(cors -> cors.configurationSource(corsConfigurationSource))
 				.authorizeHttpRequests(auth -> auth.requestMatchers(PUBLIC_ENDPOINTS)
 						.permitAll()
 						.anyRequest()

@@ -3,7 +3,8 @@ import type {
   GetSubmissionByIdResponse, 
   SubmitCodeRequest, 
   SubmitCodeResponse, 
-  SubmissionFilterRequest 
+  SubmissionFilterRequest,
+  SubmissionDetailsUi
 } from '../types/api';
 import { apiClient } from './api-client';
 
@@ -38,7 +39,7 @@ export const submissionsService = {
   },
   
   submit: async (data: SubmitCodeRequest): Promise<SubmitCodeResponse> => {
-    const response = await apiClient.post<SubmitCodeResponse>('/api/v1/submissions', data);
-    return response.data;
+    const response = await apiClient.post<{submissionDetails: SubmissionDetailsUi}>('/api/v1/submissions', data);
+    return { submission: response.data.submissionDetails };
   }
 };

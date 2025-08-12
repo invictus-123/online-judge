@@ -16,7 +16,7 @@ export const ProtectedRoute = ({ children, requireAuth = true }: ProtectedRouteP
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          <output className="text-gray-600 dark:text-gray-400">Loading...</output>
         </div>
       </div>
     );
@@ -27,7 +27,10 @@ export const ProtectedRoute = ({ children, requireAuth = true }: ProtectedRouteP
   }
 
   if (!requireAuth && isAuthenticated) {
-    const from = location.state?.from?.pathname || '/';
+    // Check for redirect parameter in URL
+    const searchParams = new URLSearchParams(location.search);
+    const redirectParam = searchParams.get('redirect');
+    const from = redirectParam || location.state?.from?.pathname || '/';
     return <Navigate to={from} replace />;
   }
 

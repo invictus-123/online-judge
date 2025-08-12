@@ -183,7 +183,7 @@ export interface GetSubmissionByIdResponse {
 }
 
 export interface SubmitCodeResponse {
-  submission: SubmissionSummaryUi;
+  submission: SubmissionDetailsUi;
 }
 
 export interface CreateProblemResponse {

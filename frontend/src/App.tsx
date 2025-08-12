@@ -8,7 +8,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
-import { ProblemsListPage } from './pages/problems';
+import { ProblemsListPage, ProblemDetailPage } from './pages/problems';
 import { SubmissionsListPage } from './pages/submissions';
 import './index.css';
 
@@ -48,6 +48,7 @@ function App() {
                   <Route index element={<HomePage />} />
                   
                   <Route path="/problems" element={<ProblemsListPage />} />
+                  <Route path="/problems/:id" element={<ProblemDetailPage />} />
                   
                   <Route path="/submissions" element={<SubmissionsListPage />} />
                   
