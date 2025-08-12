@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"online-judge/executor/master"
 	"online-judge/executor/rabbitmq"
 	"os"
@@ -43,6 +44,8 @@ func main() {
 	master.Start()
 	log.Printf("Master started with %d workers.", workerCount)
 
+	startHealthServer()
+
 	waitForShutdown()
 	log.Println("Shutting down executor...")
 }
@@ -52,6 +55,21 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func startHealthServer() {
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	port := getEnv("PORT", "8080")
+	go func() {
+		log.Printf("Health server starting on port %s", port)
+		if err := http.ListenAndServe(":"+port, nil); err != nil {
+			log.Printf("Health server error: %v", err)
+		}
+	}()
 }
 
 func waitForShutdown() {
