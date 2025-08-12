@@ -61,20 +61,23 @@ export const handlers = [
 
   http.get('/api/v1/problems/:id', ({ params }) => {
     return HttpResponse.json({
-      id: Number(params.id),
-      title: 'Two Sum',
-      difficulty: 'EASY',
-      tags: ['ARRAY', 'HASH_TABLE'],
-      statement: 'Given an array of integers nums and an integer target...',
-      memoryLimitMb: 256,
-      timeLimitSeconds: 1,
-      testCases: [
-        {
-          input: '[2,7,11,15]\n9',
-          output: '[0,1]',
-          explanation: 'nums[0] + nums[1] = 2 + 7 = 9'
-        }
-      ]
+      problemDetails: {
+        id: Number(params.id),
+        title: 'Two Sum',
+        difficulty: 'EASY',
+        tags: ['ARRAY', 'STRING'],
+        statement: 'Given an array of integers $nums$ and an integer $target$, return indices of the two numbers such that they add up to target.',
+        timeLimitInSecond: 2.0,
+        memoryLimitInMb: 256,
+        sampleTestCases: [
+          {
+            input: '[2,7,11,15]\n9',
+            expectedOutput: '[0,1]',
+            explanation: 'Because $nums[0] + nums[1] = 2 + 7 = 9$, we return $[0, 1]$.'
+          }
+        ],
+        solvedStatus: 'UNATTEMPTED'
+      }
     })
   }),
 
@@ -131,7 +134,27 @@ export const handlers = [
 
   http.post('/api/v1/submissions', () => {
     return HttpResponse.json({
-      submissionId: 1
+      submissionDetails: {
+        id: 1,
+        problemSummary: {
+          id: 1,
+          title: 'Two Sum',
+          difficulty: 'EASY',
+          tags: ['ARRAY', 'STRING'],
+          solvedStatus: 'UNATTEMPTED'
+        },
+        userSummary: {
+          id: 'user1',
+          handle: 'testuser',
+          firstName: 'Test',
+          lastName: 'User'
+        },
+        status: 'WAITING_FOR_EXECUTION',
+        language: 'CPP',
+        submittedAt: new Date().toISOString(),
+        code: 'test code',
+        testResults: []
+      }
     })
   })
 ]

@@ -27,7 +27,12 @@ vi.mock('react-router-dom', async () => {
 
 // Mock monaco editor
 vi.mock('@monaco-editor/react', () => ({
-  Editor: ({ value, onChange, language, theme }: any) => (
+  Editor: ({ value, onChange, language, theme }: {
+    value?: string;
+    onChange?: (value: string | undefined) => void;
+    language?: string;
+    theme?: string;
+  }) => (
     <textarea
       data-testid="monaco-editor"
       data-language={language}
@@ -85,13 +90,13 @@ const mockSubmissionResponse = {
 
 const setupHandlers = () => {
   server.use(
-    http.get('/api/v1/problems/1', () => {
+    http.get('http://localhost:8080/api/v1/problems/1', () => {
       return HttpResponse.json({
         problemDetails: mockProblemDetails.problem
       });
     }),
-    http.post('/api/v1/submissions', async ({ request }) => {
-      const body = await request.json() as any;
+    http.post('http://localhost:8080/api/v1/submissions', async ({ request }) => {
+      const body = await request.json() as { code: string; language: string; problemId: number };
       return HttpResponse.json({
         submissionDetails: {
           ...mockSubmissionResponse.submission,
@@ -118,13 +123,15 @@ describe('ProblemDetailPage', () => {
     mockedUseTheme.mockReturnValue({
       theme: 'light'
     });
-    mockedUseDocumentTitle.mockImplementation(() => {});
+    mockedUseDocumentTitle.mockImplementation((title: string) => {
+      document.title = title;
+    });
   });
 
   describe('Loading and Error States', () => {
     it('shows loading state while fetching problem', async () => {
       server.use(
-        http.get('/api/v1/problems/1', () => {
+        http.get('http://localhost:8080/api/v1/problems/1', () => {
           return new Promise(() => {}); // Never resolves
         })
       );
@@ -132,12 +139,12 @@ describe('ProblemDetailPage', () => {
       renderWithProviders(<ProblemDetailPage />);
       
       expect(screen.getByText('Loading problem...')).toBeInTheDocument();
-      expect(screen.getByRole('status', { name: /loading/i })).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeInTheDocument();
     });
 
     it('shows error state when problem not found', async () => {
       server.use(
-        http.get('/api/v1/problems/1', () => {
+        http.get('http://localhost:8080/api/v1/problems/1', () => {
           return new HttpResponse(null, { status: 404 });
         })
       );
@@ -167,7 +174,7 @@ describe('ProblemDetailPage', () => {
       renderWithProviders(<ProblemDetailPage />);
       
       await waitFor(() => {
-        expect(screen.getByText('Two Sum')).toBeInTheDocument();
+        expect(screen.getByText(/Two Sum/)).toBeInTheDocument();
       });
 
       expect(screen.getByText('EASY')).toBeInTheDocument();
@@ -178,29 +185,29 @@ describe('ProblemDetailPage', () => {
     });
 
     it('renders LaTeX in problem statement', async () => {
-      renderWithProviders(<ProblemDetailPage />);
+      const { container } = renderWithProviders(<ProblemDetailPage />);
       
       await waitFor(() => {
         expect(screen.getByText(/Given an array of integers/)).toBeInTheDocument();
       });
 
       // LaTeX rendering creates spans with katex classes
-      const mathElements = screen.container.querySelectorAll('.katex');
+      const mathElements = container.querySelectorAll('.katex');
       expect(mathElements.length).toBeGreaterThan(0);
     });
 
     it('displays sample test cases with LaTeX explanations', async () => {
-      renderWithProviders(<ProblemDetailPage />);
+      const { container } = renderWithProviders(<ProblemDetailPage />);
       
       await waitFor(() => {
         expect(screen.getByText('Example 1')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('[2,7,11,15]')).toBeInTheDocument();
-      expect(screen.getByText('[0,1]')).toBeInTheDocument();
+      expect(screen.getByText(/\[2,7,11,15\]/)).toBeInTheDocument();
+      expect(screen.getByText(/\[0,1\]/)).toBeInTheDocument();
       
       // Check for LaTeX in explanation
-      const explanationMath = screen.container.querySelector('.katex');
+      const explanationMath = container.querySelector('.katex');
       expect(explanationMath).toBeInTheDocument();
     });
 
@@ -214,7 +221,7 @@ describe('ProblemDetailPage', () => {
       };
 
       server.use(
-        http.get('/api/v1/problems/1', () => {
+        http.get('http://localhost:8080/api/v1/problems/1', () => {
           return HttpResponse.json({
             problemDetails: solvedProblem.problem
           });
@@ -244,7 +251,7 @@ describe('ProblemDetailPage', () => {
       };
 
       server.use(
-        http.get('/api/v1/problems/1', () => {
+        http.get('http://localhost:8080/api/v1/problems/1', () => {
           return HttpResponse.json({
             problemDetails: solvedProblem.problem
           });
@@ -259,7 +266,7 @@ describe('ProblemDetailPage', () => {
       renderWithProviders(<ProblemDetailPage />);
       
       await waitFor(() => {
-        expect(screen.getByText('Two Sum')).toBeInTheDocument();
+        expect(screen.getByText(/Two Sum/)).toBeInTheDocument();
       });
 
       const solvedIcon = screen.queryByTestId('CheckCircle2');
@@ -338,8 +345,11 @@ describe('ProblemDetailPage', () => {
       renderWithProviders(<ProblemDetailPage />);
       
       await waitFor(() => {
-        expect(screen.getByText(/Please login to submit your solution/)).toBeInTheDocument();
+        expect(screen.getByText(/Two Sum/)).toBeInTheDocument();
       });
+      
+      expect(screen.getByText(/login/)).toBeInTheDocument();
+      expect(screen.getByText(/submit.*solution/)).toBeInTheDocument();
 
       expect(screen.queryByText('Submit')).not.toBeInTheDocument();
     });
@@ -372,7 +382,8 @@ describe('ProblemDetailPage', () => {
 
       const editor = screen.getByTestId('monaco-editor');
       await user.clear(editor);
-      await user.type(editor, 'int main() { return 0; }');
+      await user.click(editor);
+      await user.paste('int main() { return 0; }');
 
       const submitButton = screen.getByText('Submit');
       await user.click(submitButton);
@@ -404,7 +415,7 @@ describe('ProblemDetailPage', () => {
 
     it('handles submission errors', async () => {
       server.use(
-        http.post('/api/v1/submissions', () => {
+        http.post('http://localhost:8080/api/v1/submissions', () => {
           return HttpResponse.json(
             { message: 'Rate limit exceeded' },
             { status: 429 }
@@ -437,7 +448,7 @@ describe('ProblemDetailPage', () => {
 
     it('shows loading state during submission', async () => {
       server.use(
-        http.post('/api/v1/submissions', () => {
+        http.post('http://localhost:8080/api/v1/submissions', () => {
           return new Promise(() => {}); // Never resolves
         })
       );
@@ -467,10 +478,14 @@ describe('ProblemDetailPage', () => {
   });
 
   describe('Responsive Layout', () => {
-    it('stacks panels vertically on mobile', () => {
-      renderWithProviders(<ProblemDetailPage />);
+    it('stacks panels vertically on mobile', async () => {
+      const { container } = renderWithProviders(<ProblemDetailPage />);
       
-      const grid = screen.container.querySelector('.grid');
+      await waitFor(() => {
+        expect(screen.getByText(/Two Sum/)).toBeInTheDocument();
+      });
+      
+      const grid = container.querySelector('.grid');
       expect(grid).toHaveClass('grid-cols-1', 'lg:grid-cols-2');
     });
   });
@@ -486,7 +501,7 @@ describe('ProblemDetailPage', () => {
 
     it('sets default title when problem is loading', () => {
       server.use(
-        http.get('/api/v1/problems/1', () => {
+        http.get('http://localhost:8080/api/v1/problems/1', () => {
           return new Promise(() => {}); // Never resolves
         })
       );

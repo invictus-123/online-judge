@@ -47,11 +47,11 @@ const getDifficultyColor = (difficulty: string) => {
 const getSolvedStatusIcon = (status: SolvedStatus) => {
   switch (status) {
     case SolvedStatus.SOLVED:
-      return <CheckCircle2 className="w-5 h-5 text-green-600" />;
+      return <CheckCircle2 className="w-5 h-5 text-green-600" data-testid="CheckCircle2" />;
     case SolvedStatus.FAILED_ATTEMPT:
-      return <XCircle className="w-5 h-5 text-red-600" />;
+      return <XCircle className="w-5 h-5 text-red-600" data-testid="XCircle" />;
     default:
-      return <Circle className="w-5 h-5 text-gray-400" />;
+      return <Circle className="w-5 h-5 text-gray-400" data-testid="Circle" />;
   }
 };
 
@@ -60,15 +60,18 @@ const renderLatexText = (text: string) => {
   const parts = text.split(/(\$\$[\s\S]*?\$\$|\$[^$\n]*\$)/);
   
   return parts.map((part, index) => {
+    // Create a unique key based on content and position
+    const uniqueKey = `${part.slice(0, 20)}-${index}`;
+    
     // Handle block math
     if (part.startsWith('$$') && part.endsWith('$$')) {
       const latex = part.slice(2, -2);
-      return <BlockMath key={index} math={latex} />;
+      return <BlockMath key={uniqueKey} math={latex} />;
     }
     // Handle inline math
     else if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
       const latex = part.slice(1, -1);
-      return <InlineMath key={index} math={latex} />;
+      return <InlineMath key={uniqueKey} math={latex} />;
     }
     // Handle raw LaTeX commands (convert to inline math)
     else if (part.includes('\\')) {
@@ -76,13 +79,13 @@ const renderLatexText = (text: string) => {
       const hasLatexCommands = /\\[a-zA-Z]+/.test(part);
       if (hasLatexCommands) {
         // Wrap the entire part in inline math if it contains LaTeX
-        return <InlineMath key={index} math={part} />;
+        return <InlineMath key={uniqueKey} math={part} />;
       }
-      return <span key={index}>{part}</span>;
+      return <span key={uniqueKey}>{part}</span>;
     }
     // Regular text
     else {
-      return <span key={index}>{part}</span>;
+      return <span key={uniqueKey}>{part}</span>;
     }
   });
 };
@@ -173,7 +176,7 @@ export function ProblemDetailPage() {
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading problem...</p>
+          <output className="text-gray-600 dark:text-gray-400" aria-label="loading">Loading problem...</output>
         </div>
       </div>
     );
@@ -225,9 +228,9 @@ export function ProblemDetailPage() {
               
               {problem.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {problem.tags.map((tag, index) => (
+                  {problem.tags.map((tag) => (
                     <span
-                      key={index}
+                      key={tag}
                       className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 rounded-full"
                     >
                       <Tag className="w-3 h-3 mr-1" />
@@ -254,7 +257,7 @@ export function ProblemDetailPage() {
                 </h3>
                 <div className="space-y-4">
                   {problem.sampleTestCases.map((testCase, index) => (
-                    <div key={index} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                    <div key={`testcase-${testCase.input}-${testCase.expectedOutput}-${index}`} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                       <h4 className="font-medium text-gray-900 dark:text-white mb-2">
                         Example {index + 1}
                       </h4>
@@ -310,6 +313,7 @@ export function ProblemDetailPage() {
                     onChange={handleLanguageChange}
                     options={LANGUAGE_OPTIONS}
                     className="w-32"
+                    aria-label="language"
                   />
                   {user && (
                     <Button

@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '../../contexts/AuthContext'
 import { ThemeProvider } from '../../contexts/ThemeContext'
 
@@ -19,6 +20,7 @@ export const AllTheProviders = ({ children }: { children: React.ReactNode }) => 
         <ThemeProvider>
           <AuthProvider>
             {children}
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>

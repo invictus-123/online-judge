@@ -1,7 +1,8 @@
 import type { 
   ListProblemsResponse, 
   GetProblemByIdResponse, 
-  ProblemFilterRequest 
+  ProblemFilterRequest,
+  ProblemDetailsUi
 } from '../types/api';
 import { apiClient } from './api-client';
 
@@ -27,7 +28,7 @@ export const problemsService = {
   },
   
   getById: async (id: number): Promise<GetProblemByIdResponse> => {
-    const response = await apiClient.get<{problemDetails: any}>(`/api/v1/problems/${id}`);
+    const response = await apiClient.get<{problemDetails: ProblemDetailsUi}>(`/api/v1/problems/${id}`);
     return { problem: response.data.problemDetails };
   }
 };

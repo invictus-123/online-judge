@@ -2,6 +2,7 @@ import { type ReactElement } from 'react'
 import { render, type RenderOptions } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '../../contexts/AuthContext'
 import { ThemeProvider } from '../../contexts/ThemeContext'
 import { AllTheProviders } from './providers'
@@ -9,12 +10,12 @@ import { AllTheProviders } from './providers'
 interface RenderWithProvidersOptions extends Omit<RenderOptions, 'wrapper'> {
   initialAuth?: {
     isAuthenticated: boolean;
-    user: any;
+    user: { id: string; handle: string; firstName: string; lastName: string } | null;
   };
   initialTheme?: 'light' | 'dark';
 }
 
-const createCustomProviders = (initialAuth?: any, initialTheme?: 'light' | 'dark') => {
+const createCustomProviders = (initialAuth?: { isAuthenticated: boolean; user: { id: string; handle: string; firstName: string; lastName: string } | null }, initialTheme?: 'light' | 'dark') => {
   return ({ children }: { children: React.ReactNode }) => {
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -45,6 +46,7 @@ const createCustomProviders = (initialAuth?: any, initialTheme?: 'light' | 'dark
           <ThemeComponent>
             <AuthComponent>
               {children}
+              <Toaster />
             </AuthComponent>
           </ThemeComponent>
         </QueryClientProvider>
