@@ -12,6 +12,7 @@ jobs:
     outputs:
       backend: ${{ steps.changes.outputs.backend }}
       frontend: ${{ steps.changes.outputs.frontend }}
+      executor: ${{ steps.changes.outputs.executor }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,6 +29,9 @@ jobs:
               - '.github/workflows/**'
             frontend:
               - 'frontend/**'
+              - '.github/workflows/**'
+            executor:
+              - 'executor/**'
               - '.github/workflows/**'
 
   backend-test:
@@ -103,9 +107,57 @@ jobs:
         run: npm run build
         working-directory: ./frontend
 
+  executor-test:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.executor == 'true' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.18'
+          cache-dependency-path: executor/go.mod
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/executor/go.mod') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download Go dependencies
+        run: go mod download
+        working-directory: ./executor
+
+      - name: Run unit tests
+        run: go test -short -v ./...
+        working-directory: ./executor
+
+      - name: Build executor
+        run: go build -o main .
+        working-directory: ./executor
+
+      - name: Run integration tests (if Docker available)
+        run: |
+          if docker info >/dev/null 2>&1; then
+            echo "Docker is available, running integration tests"
+            go test -v ./integration/...
+          else
+            echo "Docker not available, skipping integration tests"
+            go test -short -v ./integration/...
+          fi
+        working-directory: ./executor
+
   deploy-report:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.backend-test.result == 'success' || needs.frontend-test.result == 'success' || needs.backend-test.result == 'skipped' || needs.frontend-test.result == 'skipped')
-    needs: [detect-changes, backend-test, frontend-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.backend-test.result == 'success' || needs.frontend-test.result == 'success' || needs.executor-test.result == 'success' || needs.backend-test.result == 'skipped' || needs.frontend-test.result == 'skipped' || needs.executor-test.result == 'skipped')
+    needs: [detect-changes, backend-test, frontend-test, executor-test]
     runs-on: ubuntu-latest
 
     permissions:

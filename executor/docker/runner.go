@@ -59,11 +59,11 @@ var langConfigs = map[string]LanguageConfig{
 
 // RunInContainer creates a Docker container, executes the code, and returns the result.
 func RunInContainer(language, code, input string) (*ExecutionResult, error) {
-	return RunInContainerWithLimits(language, code, input, 2.0, 256*1024*1024) // 2 seconds, 256MB
+	return RunInContainerWithLimits(0, language, code, input, 2.0, 256*1024*1024) // 2 seconds, 256MB
 }
 
 // RunInContainerWithLimits creates a Docker container with custom limits, executes the code, and returns the result.
-func RunInContainerWithLimits(language, code, input string, timeLimitSeconds float64, memoryLimitBytes int64) (*ExecutionResult, error) {
+func RunInContainerWithLimits(submissionID int64, language, code, input string, timeLimitSeconds float64, memoryLimitBytes int64) (*ExecutionResult, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -115,9 +115,17 @@ func RunInContainerWithLimits(language, code, input string, timeLimitSeconds flo
 	}
 	defer func() {
 		// Ensure container is removed
-		log.Printf("Removing container %s", resp.ID)
+		if submissionID > 0 {
+			log.Printf("[Submission %d] Removing container %s", submissionID, resp.ID)
+		} else {
+			log.Printf("Removing container %s", resp.ID)
+		}
 		if err := cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{Force: true}); err != nil {
-			log.Printf("Failed to remove container %s: %v", resp.ID, err)
+			if submissionID > 0 {
+				log.Printf("[Submission %d] Failed to remove container %s: %v", submissionID, resp.ID, err)
+			} else {
+				log.Printf("Failed to remove container %s: %v", resp.ID, err)
+			}
 		}
 	}()
 
@@ -128,7 +136,11 @@ func RunInContainerWithLimits(language, code, input string, timeLimitSeconds flo
 
 	// --- COMPILE STEP ---
 	if config.CompileCmd != nil {
-		log.Printf("Compiling code in container %s", resp.ID)
+		if submissionID > 0 {
+			log.Printf("[Submission %d] Compiling code in container %s", submissionID, resp.ID)
+		} else {
+			log.Printf("Compiling code in container %s", resp.ID)
+		}
 		execConfig := types.ExecConfig{
 			Cmd:          config.CompileCmd,
 			AttachStdout: true,
@@ -164,7 +176,11 @@ func RunInContainerWithLimits(language, code, input string, timeLimitSeconds flo
 
 	// --- EXECUTION STEP ---
 	// Execute the program using docker exec
-	log.Printf("Executing code in container %s", resp.ID)
+	if submissionID > 0 {
+		log.Printf("[Submission %d] Executing code in container %s", submissionID, resp.ID)
+	} else {
+		log.Printf("Executing code in container %s", resp.ID)
+	}
 	execConfig := types.ExecConfig{
 		Cmd:          config.ExecuteCmd,
 		AttachStdin:  true,

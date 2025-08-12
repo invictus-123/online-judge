@@ -15,10 +15,10 @@ import (
 type Worker struct {
 	id       int
 	jobQueue <-chan amqp091.Delivery
-	mqClient *rabbitmq.Client
+	mqClient rabbitmq.ClientInterface
 }
 
-func NewWorker(id int, jobQueue <-chan amqp091.Delivery, mqClient *rabbitmq.Client) *Worker {
+func NewWorker(id int, jobQueue <-chan amqp091.Delivery, mqClient rabbitmq.ClientInterface) *Worker {
 	return &Worker{
 		id:       id,
 		jobQueue: jobQueue,
@@ -39,27 +39,27 @@ func (w *Worker) process(job amqp091.Delivery) {
 		job.Nack(false, false) // Nack and send to DLQ
 		return
 	}
-	log.Printf("[Worker %d] Processing submission %d.", w.id, submission.SubmissionID)
+	log.Printf("[Submission %d] [Worker %d] Processing submission.", submission.SubmissionID, w.id)
 
 	if err := updateStatus(submission.SubmissionID, "RUNNING", w); err != nil {
-		log.Printf("[Worker %d] Failed to publish running status for submission %d: %v", w.id, submission.SubmissionID, err)
+		log.Printf("[Submission %d] [Worker %d] Failed to publish running status: %v", submission.SubmissionID, w.id, err)
 		// We will continue processing but NACK at the end if results also fail to publish.
 	}
 
 	// 2. Execute all test cases
 	decodedCode, err := base64.StdEncoding.DecodeString(submission.Code)
 	if err != nil {
-		log.Printf("[Worker %d] Failed to decode submission code for submission %d: %v. Rejecting message.", w.id, submission.SubmissionID, err)
+		log.Printf("[Submission %d] [Worker %d] Failed to decode submission code: %v. Rejecting message.", submission.SubmissionID, w.id, err)
 		job.Ack(false) // Ack the message as there is no point executing further with a malformed code
 		return
 	}
 	var results []types.TestCaseResultMessage
 	for _, testCase := range submission.TestCases {
-		log.Printf("[Worker %d] Running test case %s for submission %d.", w.id, testCase.TestCaseID, submission.SubmissionID)
+		log.Printf("[Submission %d] [Worker %d] Running test case %s.", submission.SubmissionID, w.id, testCase.TestCaseID)
 
 		decodedInput, err := base64.StdEncoding.DecodeString(testCase.Input)
 		if err != nil {
-			log.Printf("[Worker %d] Failed to decode test case input %s for submission %d: %v. Failing this test case.", w.id, testCase.TestCaseID, submission.SubmissionID, err)
+			log.Printf("[Submission %d] [Worker %d] Failed to decode test case input %s: %v. Failing this test case.", submission.SubmissionID, w.id, testCase.TestCaseID, err)
 			results = append(results, types.TestCaseResultMessage{
 				TestCaseID: testCase.TestCaseID,
 				Status:     "COMPILATION_ERROR",
@@ -69,9 +69,9 @@ func (w *Worker) process(job amqp091.Delivery) {
 		}
 
 		memoryLimitBytes := submission.MemoryLimit * 1024 * 1024 // Convert MB to bytes
-		execResult, err := docker.RunInContainerWithLimits(submission.Language, string(decodedCode), string(decodedInput), submission.TimeLimit, memoryLimitBytes)
+		execResult, err := docker.RunInContainerWithLimits(submission.SubmissionID, submission.Language, string(decodedCode), string(decodedInput), submission.TimeLimit, memoryLimitBytes)
 		if err != nil {
-			log.Printf("[Worker %d] Execution failed for test case %s: %v", w.id, testCase.TestCaseID, err)
+			log.Printf("[Submission %d] [Worker %d] Execution failed for test case %s: %v", submission.SubmissionID, w.id, testCase.TestCaseID, err)
 			results = append(results, types.TestCaseResultMessage{
 				TestCaseID: testCase.TestCaseID,
 				Status:     "COMPILATION_ERROR",
@@ -82,7 +82,7 @@ func (w *Worker) process(job amqp091.Delivery) {
 
 		decodedExpectedOutput, err := base64.StdEncoding.DecodeString(testCase.ExpectedOutput)
 		if err != nil {
-			log.Printf("[Worker %d] Failed to decode expected output for test case %s: %v", w.id, testCase.TestCaseID, err)
+			log.Printf("[Submission %d] [Worker %d] Failed to decode expected output for test case %s: %v", submission.SubmissionID, w.id, testCase.TestCaseID, err)
 			results = append(results, types.TestCaseResultMessage{
 				TestCaseID: testCase.TestCaseID,
 				Status:     "COMPILATION_ERROR",
@@ -103,14 +103,14 @@ func (w *Worker) process(job amqp091.Delivery) {
 	}
 
 	if err := sendResults(submission.SubmissionID, results, w); err != nil {
-		log.Printf("[Worker %d] Failed to publish results for submission %d: %v. NACKing message.", w.id, submission.SubmissionID, err)
+		log.Printf("[Submission %d] [Worker %d] Failed to publish results: %v. NACKing message.", submission.SubmissionID, w.id, err)
 		job.Nack(false, true) // Nack and requeue, as results failed to send
 		return
 	}
 
 	// 4. Acknowledge the message from the submission queue as processing is complete.
 	job.Ack(false)
-	log.Printf("[Worker %d] Finished processing submission %d.", w.id, submission.SubmissionID)
+	log.Printf("[Submission %d] [Worker %d] Finished processing submission.", submission.SubmissionID, w.id)
 }
 
 func sendResults(submissionID int64, results []types.TestCaseResultMessage, w *Worker) error {
@@ -161,6 +161,7 @@ func computeOverallStatus(results []types.TestCaseResultMessage) (string, float6
 	
 	var maxTime float64
 	var maxMemory int64
+	overallStatus := "PASSED"
 	
 	for _, result := range results {
 		if result.TimeTaken > maxTime {
@@ -171,21 +172,17 @@ func computeOverallStatus(results []types.TestCaseResultMessage) (string, float6
 		}
 		
 		if result.Status == "COMPILATION_ERROR" {
-			return "COMPILATION_ERROR", maxTime, maxMemory
-		}
-		if result.Status == "RUNTIME_ERROR" {
-			return "RUNTIME_ERROR", maxTime, maxMemory
-		}
-		if result.Status == "TIME_LIMIT_EXCEEDED" {
-			return "TIME_LIMIT_EXCEEDED", maxTime, maxMemory
-		}
-		if result.Status == "MEMORY_LIMIT_EXCEEDED" {
-			return "MEMORY_LIMIT_EXCEEDED", maxTime, maxMemory
-		}
-		if result.Status == "WRONG_ANSWER" {
-			return "WRONG_ANSWER", maxTime, maxMemory
+			overallStatus = "COMPILATION_ERROR"
+		} else if result.Status == "RUNTIME_ERROR" && overallStatus == "PASSED" {
+			overallStatus = "RUNTIME_ERROR"
+		} else if result.Status == "TIME_LIMIT_EXCEEDED" && (overallStatus == "PASSED" || overallStatus == "WRONG_ANSWER") {
+			overallStatus = "TIME_LIMIT_EXCEEDED"
+		} else if result.Status == "MEMORY_LIMIT_EXCEEDED" && (overallStatus == "PASSED" || overallStatus == "WRONG_ANSWER") {
+			overallStatus = "MEMORY_LIMIT_EXCEEDED"
+		} else if result.Status == "WRONG_ANSWER" && overallStatus == "PASSED" {
+			overallStatus = "WRONG_ANSWER"
 		}
 	}
 	
-	return "PASSED", maxTime, maxMemory
+	return overallStatus, maxTime, maxMemory
 }

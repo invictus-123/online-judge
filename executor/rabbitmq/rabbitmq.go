@@ -16,6 +16,11 @@ const (
 	StatusRoutingKey = "submission.status"
 )
 
+type ClientInterface interface {
+	ConsumeSubmissions(queueName string) (<-chan amqp091.Delivery, error)
+	Publish(exchange, routingKey string, body interface{}) error
+}
+
 type Client struct {
 	conn *amqp091.Connection
 	ch   *amqp091.Channel
