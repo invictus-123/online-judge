@@ -116,6 +116,11 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 		}
 	}()
 
+	// Start the container so we can execute commands in it
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		return nil, fmt.Errorf("failed to start container: %w", err)
+	}
+
 	// --- COMPILE STEP ---
 	if config.CompileCmd != nil {
 		log.Printf("Compiling code in container %s", resp.ID)
@@ -165,11 +170,7 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 	}
 	defer attach.Close()
 
-	// Start the container
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		return nil, fmt.Errorf("failed to start container: %w", err)
-	}
-
+	// Container is already started from compilation step
 	// Write input to stdin
 	_, err = attach.Conn.Write([]byte(input))
 	if err != nil {
