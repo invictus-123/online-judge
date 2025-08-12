@@ -292,6 +292,11 @@ jobs:
         run: |
           EXECUTOR_IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.EXECUTOR_SERVICE_NAME }}:${{ github.sha }}"
 
+          # Copy service account key to VM for Docker authentication
+          echo '${{ secrets.GCP_SA_KEY }}' > /tmp/sa-key.json
+          gcloud compute scp /tmp/sa-key.json ${{ env.VM_INSTANCE_NAME }}:/tmp/sa-key.json --zone=${{ env.GCP_ZONE }}
+          rm /tmp/sa-key.json
+
           gcloud compute scp executor/deployment/vm-startup-script.sh ${{ env.VM_INSTANCE_NAME }}:/tmp/setup-executor.sh \
             --zone=${{ env.GCP_ZONE }}
 
@@ -301,6 +306,12 @@ jobs:
               sudo chmod +x /tmp/setup-executor.sh
 
               sudo /tmp/setup-executor.sh
+
+              gcloud auth activate-service-account --key-file=/tmp/sa-key.json --quiet
+
+              gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+              rm -f /tmp/sa-key.json
 
               sudo systemctl stop online-judge-executor || true
               sudo docker stop online-judge-executor || true
