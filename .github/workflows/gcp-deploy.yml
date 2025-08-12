@@ -8,6 +8,7 @@ env:
   GCP_REGION: us-central1
   GCP_ZONE: us-central1-c
   VM_EXTERNAL_ID: ${{ secrets.VM_EXTERNAL_ID }}
+  VM_INSTANCE_NAME: ${{ secrets.VM_INSTANCE_NAME }}
   SPRING_DATASOURCE_DB_NAME: ${{ secrets.POSTGRES_DB }}
   SPRING_DATASOURCE_USERNAME: ${{ secrets.POSTGRES_USER }}
   SPRING_DATASOURCE_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -291,10 +292,10 @@ jobs:
         run: |
           EXECUTOR_IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.EXECUTOR_SERVICE_NAME }}:${{ github.sha }}"
 
-          gcloud compute scp executor/deployment/vm-startup-script.sh ${{ env.VM_EXTERNAL_ID }}:/tmp/setup-executor.sh \
+          gcloud compute scp executor/deployment/vm-startup-script.sh ${{ env.VM_INSTANCE_NAME }}:/tmp/setup-executor.sh \
             --zone=${{ env.GCP_ZONE }}
 
-          gcloud compute ssh ${{ env.VM_EXTERNAL_ID }} \
+          gcloud compute ssh ${{ env.VM_INSTANCE_NAME }} \
             --zone=${{ env.GCP_ZONE }} \
             --command="
               sudo chmod +x /tmp/setup-executor.sh
@@ -320,7 +321,7 @@ jobs:
 
       - name: Verify executor deployment
         run: |
-          gcloud compute ssh ${{ env.VM_EXTERNAL_ID }} \
+          gcloud compute ssh ${{ env.VM_INSTANCE_NAME }} \
             --zone=${{ env.GCP_ZONE }} \
             --command="
               echo 'Checking executor container status:'
