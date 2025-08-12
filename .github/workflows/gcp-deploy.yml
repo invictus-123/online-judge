@@ -307,17 +307,23 @@ jobs:
 
               sudo /tmp/setup-executor.sh
 
-              gcloud auth activate-service-account --key-file=/tmp/sa-key.json --quiet
-
-              gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
-
-              rm -f /tmp/sa-key.json
-
-              sudo systemctl stop online-judge-executor || true
+             sudo systemctl stop online-judge-executor || true
               sudo docker stop online-judge-executor || true
               sudo docker rm online-judge-executor || true
 
+              echo 'Authenticating with Artifact Registry...'
+              gcloud auth activate-service-account --key-file=/tmp/sa-key.json --quiet
+              
+              ACCESS_TOKEN=\$(gcloud auth print-access-token)
+              echo \$ACCESS_TOKEN | sudo docker login -u oauth2accesstoken --password-stdin https://${{ env.GCP_REGION }}-docker.pkg.dev
+              
+              echo 'Testing Docker authentication...'
+              sudo docker pull hello-world > /dev/null 2>&1 && echo 'Docker works' || echo 'Docker may have issues'
+
+              echo 'Pulling executor image: $EXECUTOR_IMAGE'
               sudo docker pull $EXECUTOR_IMAGE
+              
+              rm -f /tmp/sa-key.json
 
               sudo docker run -d \
                 --name online-judge-executor \
