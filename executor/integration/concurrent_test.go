@@ -17,6 +17,7 @@ type concurrentMQClient struct {
 	publishedMessages []concurrentMessage
 	consumeQueue      chan amqp091.Delivery
 	mu                sync.Mutex
+	closed            bool
 }
 
 type concurrentMessage struct {
@@ -55,12 +56,39 @@ func (m *concurrentMQClient) reset() {
 	m.publishedMessages = nil
 }
 
+func (m *concurrentMQClient) close() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !m.closed {
+		close(m.consumeQueue)
+		m.closed = true
+	}
+}
+
 func (m *concurrentMQClient) addSubmissions(submissions []types.SubmissionMessage) {
 	for _, submission := range submissions {
 		data, _ := json.Marshal(submission)
 		delivery := amqp091.Delivery{Body: data}
+		
+		// Provide proper ack/nack functionality
+		delivery.Acknowledger = &mockAcknowledger{}
+		
 		m.consumeQueue <- delivery
 	}
+}
+
+type mockAcknowledger struct{}
+
+func (a *mockAcknowledger) Ack(tag uint64, multiple bool) error {
+	return nil
+}
+
+func (a *mockAcknowledger) Nack(tag uint64, multiple bool, requeue bool) error {
+	return nil
+}
+
+func (a *mockAcknowledger) Reject(tag uint64, requeue bool) error {
+	return nil
 }
 
 func TestConcurrent_MultipleWorkersParallelProcessing(t *testing.T) {
@@ -71,6 +99,7 @@ func TestConcurrent_MultipleWorkersParallelProcessing(t *testing.T) {
 	mqClient := &concurrentMQClient{
 		consumeQueue: make(chan amqp091.Delivery, 100),
 	}
+	defer mqClient.close()
 
 	workerCount := 5
 	m, err := master.NewMaster(mqClient, workerCount, "test.queue")
@@ -79,7 +108,7 @@ func TestConcurrent_MultipleWorkersParallelProcessing(t *testing.T) {
 	}
 
 	m.Start()
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond) // Give more time for workers to start
 
 	numSubmissions := 20
 	submissions := make([]types.SubmissionMessage, numSubmissions)
@@ -91,8 +120,31 @@ func TestConcurrent_MultipleWorkersParallelProcessing(t *testing.T) {
 	startTime := time.Now()
 	mqClient.addSubmissions(submissions)
 
-	time.Sleep(15 * time.Second)
+	// Wait for all submissions to be processed with timeout
+	timeout := time.After(30 * time.Second)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
 
+	for {
+		select {
+		case <-timeout:
+			t.Fatalf("Timeout waiting for submissions to complete")
+		case <-ticker.C:
+			messages := mqClient.getMessages()
+			resultCount := 0
+			for _, msg := range messages {
+				if msg.exchange == rabbitmq.ResultExchange {
+					resultCount++
+				}
+			}
+			
+			if resultCount >= numSubmissions {
+				goto checkResults // Break out of the select/for loop
+			}
+		}
+	}
+
+checkResults:
 	messages := mqClient.getMessages()
 	
 	resultMessages := []concurrentMessage{}
