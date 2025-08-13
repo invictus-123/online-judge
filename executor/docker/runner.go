@@ -170,9 +170,15 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		if inspect.ExitCode != 0 {
 			var compileErr bytes.Buffer
 			io.Copy(&compileErr, execResp.Reader)
+			compileErrMsg := compileErr.String()
+			if submissionID > 0 {
+				log.Printf("[Submission %d] Compilation failed with exit code %d: %s", submissionID, inspect.ExitCode, compileErrMsg)
+			} else {
+				log.Printf("Compilation failed with exit code %d: %s", inspect.ExitCode, compileErrMsg)
+			}
 			return &ExecutionResult{
 				Status:     "COMPILATION_ERROR",
-				Output:     compileErr.String(),
+				Output:     compileErrMsg,
 				TimeMillis: 0,
 				MemoryKB:   0,
 			}, nil
@@ -226,6 +232,11 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	}
 
 	// Write input to stdin
+	if submissionID > 0 {
+		log.Printf("[Submission %d] Providing input to program: %q", submissionID, input)
+	} else {
+		log.Printf("Providing input to program: %q", input)
+	}
 	_, err = execResp.Conn.Write([]byte(input))
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to stdin: %w", err)
@@ -311,9 +322,15 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	}
 
 	if inspect.ExitCode != 0 {
+		runtimeErrMsg := outputBuffer.String()
+		if submissionID > 0 {
+			log.Printf("[Submission %d] Runtime error with exit code %d. Output/Error: %s", submissionID, inspect.ExitCode, runtimeErrMsg)
+		} else {
+			log.Printf("Runtime error with exit code %d. Output/Error: %s", inspect.ExitCode, runtimeErrMsg)
+		}
 		return &ExecutionResult{
 			Status:     "RUNTIME_ERROR",
-			Output:     outputBuffer.String(),
+			Output:     runtimeErrMsg,
 			TimeMillis: execTime.Milliseconds(),
 			MemoryKB:   memoryUsageKB,
 		}, nil
@@ -329,9 +346,16 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		}, nil
 	}
 
+	finalOutput := strings.TrimSpace(outputBuffer.String())
+	if submissionID > 0 {
+		log.Printf("[Submission %d] Program executed successfully. Output: %q", submissionID, finalOutput)
+	} else {
+		log.Printf("Program executed successfully. Output: %q", finalOutput)
+	}
+	
 	return &ExecutionResult{
 		Status:     "ACCEPTED",
-		Output:     strings.TrimSpace(outputBuffer.String()),
+		Output:     finalOutput,
 		TimeMillis: execTime.Milliseconds(),
 		MemoryKB:   memoryUsageKB,
 	}, nil
