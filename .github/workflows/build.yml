@@ -136,9 +136,20 @@ jobs:
         run: go mod download
         working-directory: ./executor
 
-      - name: Run unit tests
-        run: go test -short -v ./...
+      - name: Run unit tests with coverage
+        run: go test -short -v -coverprofile=coverage.out ./...
         working-directory: ./executor
+
+      - name: Generate coverage report
+        run: go tool cover -html=coverage.out -o coverage.html
+        working-directory: ./executor
+
+      - name: Upload executor coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: executor-coverage-report
+          path: executor/coverage.html
+          retention-days: 7
 
       - name: Build executor
         run: go build -o main .
@@ -173,6 +184,13 @@ jobs:
           name: frontend-coverage-report
           path: frontend-coverage
 
+      - name: Download executor coverage report
+        if: ${{ needs.detect-changes.outputs.executor == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: executor-coverage-report
+          path: executor-coverage
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
@@ -184,6 +202,10 @@ jobs:
           fi
           if [ -d "frontend-coverage" ]; then
             cp -r frontend-coverage coverage-reports/frontend
+          fi
+          if [ -f "executor-coverage/coverage.html" ]; then
+            mkdir -p coverage-reports/executor
+            cp executor-coverage/coverage.html coverage-reports/executor/index.html
           fi
           
           # Create index page
@@ -203,6 +225,7 @@ jobs:
               <h1>Online Judge - Test Coverage Reports</h1>
               $(if [ -d "backend-coverage" ]; then echo '<div class="card"><h2>Backend Coverage (Java/Spring Boot)</h2><p><a href="./backend/index.html">View Backend Coverage Report</a></p></div>'; fi)
               $(if [ -d "frontend-coverage" ]; then echo '<div class="card"><h2>Frontend Coverage (React/TypeScript)</h2><p><a href="./frontend/index.html">View Frontend Coverage Report</a></p></div>'; fi)
+              $(if [ -d "executor-coverage" ]; then echo '<div class="card"><h2>Executor Coverage (Go)</h2><p><a href="./executor/index.html">View Executor Coverage Report</a></p></div>'; fi)
               <p><em>Generated: $(date)</em></p>
           </body>
           </html>
