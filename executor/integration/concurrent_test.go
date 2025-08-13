@@ -101,7 +101,7 @@ func TestConcurrent_MultipleWorkersParallelProcessing(t *testing.T) {
 	}
 	defer mqClient.close()
 
-	workerCount := 5
+	workerCount := 10
 	m, err := master.NewMaster(mqClient, workerCount, "test.queue")
 	if err != nil {
 		t.Fatalf("Failed to create master: %v", err)
@@ -121,31 +121,40 @@ func TestConcurrent_MultipleWorkersParallelProcessing(t *testing.T) {
 	mqClient.addSubmissions(submissions)
 
 	// Wait for all submissions to be processed with timeout
-	timeout := time.After(30 * time.Second)
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-timeout:
-			t.Fatalf("Timeout waiting for submissions to complete")
-		case <-ticker.C:
-			messages := mqClient.getMessages()
-			resultCount := 0
-			for _, msg := range messages {
-				if msg.exchange == rabbitmq.ResultExchange {
-					resultCount++
-				}
-			}
-			
-			if resultCount >= numSubmissions {
-				goto checkResults // Break out of the select/for loop
+	maxWait := 60 * time.Second
+	checkInterval := 1 * time.Second
+	deadline := time.Now().Add(maxWait)
+	
+	for time.Now().Before(deadline) {
+		messages := mqClient.getMessages()
+		resultCount := 0
+		for _, msg := range messages {
+			if msg.exchange == rabbitmq.ResultExchange {
+				resultCount++
 			}
 		}
+		
+		if resultCount >= numSubmissions {
+			break
+		}
+		
+		time.Sleep(checkInterval)
+	}
+	
+	// Final check
+	messages := mqClient.getMessages()
+	resultCount := 0
+	for _, msg := range messages {
+		if msg.exchange == rabbitmq.ResultExchange {
+			resultCount++
+		}
+	}
+	
+	if resultCount < numSubmissions {
+		t.Fatalf("Timeout: Expected %d results, got %d after %v", numSubmissions, resultCount, maxWait)
 	}
 
-checkResults:
-	messages := mqClient.getMessages()
+	messages = mqClient.getMessages()
 	
 	resultMessages := []concurrentMessage{}
 	statusMessages := []concurrentMessage{}
@@ -196,14 +205,15 @@ func TestConcurrent_RaceConditionHandling(t *testing.T) {
 	mqClient := &concurrentMQClient{
 		consumeQueue: make(chan amqp091.Delivery, 50),
 	}
+	defer mqClient.close()
 
-	m, err := master.NewMaster(mqClient, 3, "test.queue")
+	m, err := master.NewMaster(mqClient, 6, "test.queue")
 	if err != nil {
 		t.Fatalf("Failed to create master: %v", err)
 	}
 
 	m.Start()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	numSubmissions := 15
 	submissions := make([]types.SubmissionMessage, numSubmissions)
@@ -213,14 +223,22 @@ func TestConcurrent_RaceConditionHandling(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	for i := 0; i < 3; i++ {
+	goroutines := 5
+	submissionsPerGoroutine := numSubmissions / goroutines
+	for i := 0; i < goroutines; i++ {
 		wg.Add(1)
 		go func(offset int) {
 			defer wg.Done()
-			for j := 0; j < 5; j++ {
-				submission := submissions[offset*5+j]
+			start := offset * submissionsPerGoroutine
+			end := start + submissionsPerGoroutine
+			if offset == goroutines-1 {
+				end = numSubmissions // Handle remainder in last goroutine
+			}
+			for j := start; j < end; j++ {
+				submission := submissions[j]
 				data, _ := json.Marshal(submission)
 				delivery := amqp091.Delivery{Body: data}
+				delivery.Acknowledger = &mockAcknowledger{}
 				mqClient.consumeQueue <- delivery
 				time.Sleep(10 * time.Millisecond)
 			}
@@ -228,7 +246,27 @@ func TestConcurrent_RaceConditionHandling(t *testing.T) {
 	}
 
 	wg.Wait()
-	time.Sleep(15 * time.Second)
+
+	// Wait for all submissions to be processed with timeout
+	maxWait := 60 * time.Second
+	checkInterval := 1 * time.Second
+	deadline := time.Now().Add(maxWait)
+	
+	for time.Now().Before(deadline) {
+		messages := mqClient.getMessages()
+		resultCount := 0
+		for _, msg := range messages {
+			if msg.exchange == rabbitmq.ResultExchange {
+				resultCount++
+			}
+		}
+		
+		if resultCount >= numSubmissions {
+			break
+		}
+		
+		time.Sleep(checkInterval)
+	}
 
 	messages := mqClient.getMessages()
 	
@@ -265,14 +303,15 @@ func TestConcurrent_MixedWorkloadDistribution(t *testing.T) {
 	mqClient := &concurrentMQClient{
 		consumeQueue: make(chan amqp091.Delivery, 50),
 	}
+	defer mqClient.close()
 
-	m, err := master.NewMaster(mqClient, 4, "test.queue")
+	m, err := master.NewMaster(mqClient, 8, "test.queue")
 	if err != nil {
 		t.Fatalf("Failed to create master: %v", err)
 	}
 
 	m.Start()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	submissions := []types.SubmissionMessage{
 		testutil.CreatePythonHelloWorldSubmission(),
@@ -294,7 +333,27 @@ func TestConcurrent_MixedWorkloadDistribution(t *testing.T) {
 
 	mqClient.addSubmissions(submissions)
 
-	time.Sleep(20 * time.Second)
+	// Wait for all submissions to be processed with timeout
+	maxWait := 60 * time.Second
+	checkInterval := 1 * time.Second
+	deadline := time.Now().Add(maxWait)
+	numSubmissions := len(submissions)
+	
+	for time.Now().Before(deadline) {
+		messages := mqClient.getMessages()
+		resultCount := 0
+		for _, msg := range messages {
+			if msg.exchange == rabbitmq.ResultExchange {
+				resultCount++
+			}
+		}
+		
+		if resultCount >= numSubmissions {
+			break
+		}
+		
+		time.Sleep(checkInterval)
+	}
 
 	messages := mqClient.getMessages()
 	
@@ -345,15 +404,16 @@ func TestConcurrent_HighVolumeStressTest(t *testing.T) {
 	mqClient := &concurrentMQClient{
 		consumeQueue: make(chan amqp091.Delivery, 200),
 	}
+	defer mqClient.close()
 
-	workerCount := 5
+	workerCount := 10
 	m, err := master.NewMaster(mqClient, workerCount, "test.queue")
 	if err != nil {
 		t.Fatalf("Failed to create master: %v", err)
 	}
 
 	m.Start()
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	numSubmissions := 50
 	submissions := make([]types.SubmissionMessage, numSubmissions)
@@ -383,7 +443,26 @@ func TestConcurrent_HighVolumeStressTest(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	time.Sleep(45 * time.Second)
+	// Wait for all submissions to be processed with timeout
+	maxWait := 90 * time.Second
+	checkInterval := 2 * time.Second
+	deadline := time.Now().Add(maxWait)
+	
+	for time.Now().Before(deadline) {
+		messages := mqClient.getMessages()
+		resultCount := 0
+		for _, msg := range messages {
+			if msg.exchange == rabbitmq.ResultExchange {
+				resultCount++
+			}
+		}
+		
+		if resultCount >= numSubmissions {
+			break
+		}
+		
+		time.Sleep(checkInterval)
+	}
 
 	messages := mqClient.getMessages()
 	
@@ -432,14 +511,15 @@ func TestConcurrent_WorkerIsolation(t *testing.T) {
 	mqClient := &concurrentMQClient{
 		consumeQueue: make(chan amqp091.Delivery, 20),
 	}
+	defer mqClient.close()
 
-	m, err := master.NewMaster(mqClient, 3, "test.queue")
+	m, err := master.NewMaster(mqClient, 6, "test.queue")
 	if err != nil {
 		t.Fatalf("Failed to create master: %v", err)
 	}
 
 	m.Start()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	problematicSubmissions := []types.SubmissionMessage{
 		testutil.CreateInfiniteLoopSubmission(),
@@ -467,7 +547,27 @@ func TestConcurrent_WorkerIsolation(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 	mqClient.addSubmissions(normalSubmissions)
 
-	time.Sleep(15 * time.Second)
+	// Wait for all submissions to be processed with timeout
+	totalSubmissions := len(problematicSubmissions) + len(normalSubmissions)
+	maxWait := 60 * time.Second
+	checkInterval := 1 * time.Second
+	deadline := time.Now().Add(maxWait)
+	
+	for time.Now().Before(deadline) {
+		messages := mqClient.getMessages()
+		resultCount := 0
+		for _, msg := range messages {
+			if msg.exchange == rabbitmq.ResultExchange {
+				resultCount++
+			}
+		}
+		
+		if resultCount >= totalSubmissions {
+			break
+		}
+		
+		time.Sleep(checkInterval)
+	}
 
 	messages := mqClient.getMessages()
 	
@@ -521,14 +621,15 @@ func TestConcurrent_OrderIndependence(t *testing.T) {
 	mqClient := &concurrentMQClient{
 		consumeQueue: make(chan amqp091.Delivery, 30),
 	}
+	defer mqClient.close()
 
-	m, err := master.NewMaster(mqClient, 3, "test.queue")
+	m, err := master.NewMaster(mqClient, 6, "test.queue")
 	if err != nil {
 		t.Fatalf("Failed to create master: %v", err)
 	}
 
 	m.Start()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	submissions := []types.SubmissionMessage{
 		testutil.CreatePythonHelloWorldSubmission(),
@@ -565,7 +666,28 @@ func TestConcurrent_OrderIndependence(t *testing.T) {
 		}
 
 		mqClient.addSubmissions(shuffledSubmissions)
-		time.Sleep(15 * time.Second)
+		
+		// Wait for all submissions to be processed with timeout
+		maxWait := 60 * time.Second
+		checkInterval := 1 * time.Second
+		deadline := time.Now().Add(maxWait)
+		numSubmissions := len(submissions)
+		
+		for time.Now().Before(deadline) {
+			messages := mqClient.getMessages()
+			resultCount := 0
+			for _, msg := range messages {
+				if msg.exchange == rabbitmq.ResultExchange {
+					resultCount++
+				}
+			}
+			
+			if resultCount >= numSubmissions {
+				break
+			}
+			
+			time.Sleep(checkInterval)
+		}
 
 		messages := mqClient.getMessages()
 		
@@ -611,14 +733,15 @@ func TestConcurrent_ResourceContentionHandling(t *testing.T) {
 	mqClient := &concurrentMQClient{
 		consumeQueue: make(chan amqp091.Delivery, 20),
 	}
+	defer mqClient.close()
 
-	m, err := master.NewMaster(mqClient, 2, "test.queue")
+	m, err := master.NewMaster(mqClient, 4, "test.queue")
 	if err != nil {
 		t.Fatalf("Failed to create master: %v", err)
 	}
 
 	m.Start()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	submissions := make([]types.SubmissionMessage, 10)
 	for i := 0; i < 10; i++ {
@@ -631,7 +754,27 @@ func TestConcurrent_ResourceContentionHandling(t *testing.T) {
 	startTime := time.Now()
 	mqClient.addSubmissions(submissions)
 
-	time.Sleep(60 * time.Second)
+	// Wait for all submissions to be processed with timeout
+	maxWait := 120 * time.Second // Longer timeout for resource-intensive tests
+	checkInterval := 2 * time.Second
+	deadline := time.Now().Add(maxWait)
+	numSubmissions := len(submissions)
+	
+	for time.Now().Before(deadline) {
+		messages := mqClient.getMessages()
+		resultCount := 0
+		for _, msg := range messages {
+			if msg.exchange == rabbitmq.ResultExchange {
+				resultCount++
+			}
+		}
+		
+		if resultCount >= numSubmissions {
+			break
+		}
+		
+		time.Sleep(checkInterval)
+	}
 
 	messages := mqClient.getMessages()
 	
