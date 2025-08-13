@@ -284,17 +284,17 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	}
 
 	// --- EXECUTION STEP ---
-	// Execute the program using docker exec
+	// Execute the program and redirect output to files
 	if submissionID > 0 {
 		log.Printf("[Submission %d] Executing code in container %s", submissionID, resp.ID)
 	} else {
 		log.Printf("Executing code in container %s", resp.ID)
 	}
+
+	// Create execution command that redirects stdout/stderr to files
 	execConfig := types.ExecConfig{
-		Cmd:          config.ExecuteCmd,
-		AttachStdin:  true,
-		AttachStdout: true,
-		AttachStderr: true,
+		Cmd:         []string{"sh", "-c", strings.Join(config.ExecuteCmd, " ") + " > /app/stdout.txt 2> /app/stderr.txt"},
+		AttachStdin: true,
 	}
 	execID, err := cli.ContainerExecCreate(ctx, resp.ID, execConfig)
 	if err != nil {
@@ -325,7 +325,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	execResp.CloseWrite() // Close stdin to signal end of input
 
 	startTime := time.Now()
-	var outputBuffer bytes.Buffer
 	var memoryUsageKB int64
 
 	// Start memory monitoring
@@ -362,10 +361,11 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		}
 	}()
 
-	// Read output with timeout
+	// Wait for execution completion with timeout
 	done := make(chan bool)
 	go func() {
-		io.Copy(&outputBuffer, execResp.Reader)
+		// Wait for the process by reading from execResp
+		io.Copy(ioutil.Discard, execResp.Reader)
 		done <- true
 	}()
 
@@ -390,7 +390,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	if timedOut {
 		return &ExecutionResult{
 			Status:     "TIME_LIMIT_EXCEEDED",
-			Output:     outputBuffer.String(),
+			Output:     "Time limit exceeded",
 			TimeMillis: execTime.Milliseconds(),
 			MemoryKB:   memoryUsageKB,
 		}, nil
@@ -402,16 +402,28 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		return nil, fmt.Errorf("failed to inspect execution exec: %w", err)
 	}
 
+	// Read output files from container
+	stdout, stderr, err := readOutputFiles(cli, ctx, resp.ID, submissionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read output files: %w", err)
+	}
+
 	if inspect.ExitCode != 0 {
-		runtimeErrMsg := outputBuffer.String()
 		if submissionID > 0 {
-			log.Printf("[Submission %d] Runtime error with exit code %d. Output/Error: %s", submissionID, inspect.ExitCode, runtimeErrMsg)
+			log.Printf("[Submission %d] Runtime error with exit code %d. Stderr: %q", submissionID, inspect.ExitCode, stderr)
 		} else {
-			log.Printf("Runtime error with exit code %d. Output/Error: %s", inspect.ExitCode, runtimeErrMsg)
+			log.Printf("Runtime error with exit code %d. Stderr: %q", inspect.ExitCode, stderr)
 		}
+
+		// Return stderr for runtime errors, stdout for output if stderr is empty
+		errorOutput := stderr
+		if strings.TrimSpace(errorOutput) == "" {
+			errorOutput = stdout
+		}
+
 		return &ExecutionResult{
 			Status:     "RUNTIME_ERROR",
-			Output:     runtimeErrMsg,
+			Output:     strings.TrimSpace(errorOutput),
 			TimeMillis: execTime.Milliseconds(),
 			MemoryKB:   memoryUsageKB,
 		}, nil
@@ -421,22 +433,21 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	if memoryUsageKB*1024 > memoryLimitBytes {
 		return &ExecutionResult{
 			Status:     "MEMORY_LIMIT_EXCEEDED",
-			Output:     strings.TrimSpace(outputBuffer.String()),
+			Output:     strings.TrimSpace(stdout),
 			TimeMillis: execTime.Milliseconds(),
 			MemoryKB:   memoryUsageKB,
 		}, nil
 	}
 
-	finalOutput := strings.TrimSpace(outputBuffer.String())
 	if submissionID > 0 {
-		log.Printf("[Submission %d] Program executed successfully. Output: %q", submissionID, finalOutput)
+		log.Printf("[Submission %d] Program executed successfully. Output: %q", submissionID, stdout)
 	} else {
-		log.Printf("Program executed successfully. Output: %q", finalOutput)
+		log.Printf("Program executed successfully. Output: %q", stdout)
 	}
 
 	return &ExecutionResult{
 		Status:     "ACCEPTED",
-		Output:     finalOutput,
+		Output:     strings.TrimSpace(stdout),
 		TimeMillis: execTime.Milliseconds(),
 		MemoryKB:   memoryUsageKB,
 	}, nil
@@ -484,4 +495,62 @@ func copyFileToContainer(cli *client.Client, ctx context.Context, containerID, h
 	}
 
 	return nil
+}
+
+// readOutputFiles reads stdout and stderr files from the container using Docker's CopyFromContainer API
+func readOutputFiles(cli *client.Client, ctx context.Context, containerID string, submissionID int64) (stdout, stderr string, err error) {
+	// Read stdout file
+	stdoutContent, err := readFileFromContainer(cli, ctx, containerID, "/app/stdout.txt")
+	if err != nil {
+		if submissionID > 0 {
+			log.Printf("[Submission %d] Warning: could not read stdout.txt: %v", submissionID, err)
+		}
+		stdoutContent = "" // Not an error, file might not exist if no output
+	}
+
+	// Read stderr file
+	stderrContent, err := readFileFromContainer(cli, ctx, containerID, "/app/stderr.txt")
+	if err != nil {
+		if submissionID > 0 {
+			log.Printf("[Submission %d] Warning: could not read stderr.txt: %v", submissionID, err)
+		}
+		stderrContent = "" // Not an error, file might not exist if no errors
+	}
+
+	return stdoutContent, stderrContent, nil
+}
+
+// readFileFromContainer reads a single file from container using Docker's CopyFromContainer API
+func readFileFromContainer(cli *client.Client, ctx context.Context, containerID, filePath string) (string, error) {
+	// Copy file from container
+	reader, stat, err := cli.CopyFromContainer(ctx, containerID, filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to copy file from container: %w", err)
+	}
+	defer reader.Close()
+
+	// Create tar reader
+	tr := tar.NewReader(reader)
+
+	// Read the first (and should be only) file from the tar
+	header, err := tr.Next()
+	if err != nil {
+		return "", fmt.Errorf("failed to read tar header: %w", err)
+	}
+
+	if header.Typeflag != tar.TypeReg {
+		return "", fmt.Errorf("expected regular file, got type %c", header.Typeflag)
+	}
+
+	// Read file content
+	var content bytes.Buffer
+	_, err = io.Copy(&content, tr)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file content: %w", err)
+	}
+
+	// Log file size for debugging
+	_ = stat // Use stat to avoid unused variable error
+
+	return content.String(), nil
 }
