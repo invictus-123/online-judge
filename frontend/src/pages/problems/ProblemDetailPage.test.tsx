@@ -302,7 +302,7 @@ describe('ProblemDetailPage', () => {
       await waitFor(() => {
         const editor = screen.getByTestId('monaco-editor');
         expect(editor).toHaveAttribute('data-language', 'java');
-        expect(editor.value).toContain('public class Solution');
+        expect(editor.value).toContain('public class Main');
       });
     });
 
