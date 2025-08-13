@@ -47,7 +47,7 @@ func TestLanguageConfigsStructure(t *testing.T) {
 
 func TestJavaConfig(t *testing.T) {
 	config := langConfigs["JAVA"]
-	
+
 	if config.Image != "openjdk:11-jdk-slim" {
 		t.Errorf("Java image = %s, want openjdk:11-jdk-slim", config.Image)
 	}
@@ -64,7 +64,7 @@ func TestJavaConfig(t *testing.T) {
 
 func TestPythonConfig(t *testing.T) {
 	config := langConfigs["PYTHON"]
-	
+
 	if config.Image != "python:3.9-slim" {
 		t.Errorf("Python image = %s, want python:3.9-slim", config.Image)
 	}
@@ -81,7 +81,7 @@ func TestPythonConfig(t *testing.T) {
 
 func TestCppConfig(t *testing.T) {
 	config := langConfigs["CPP"]
-	
+
 	if config.Image != "gcc:latest" {
 		t.Errorf("CPP image = %s, want gcc:latest", config.Image)
 	}
@@ -127,7 +127,7 @@ func TestExecutionResult(t *testing.T) {
 
 func TestUnsupportedLanguage(t *testing.T) {
 	result, err := RunInContainer("UNSUPPORTED", "code", "input")
-	
+
 	if err == nil {
 		t.Error("Expected error for unsupported language, got nil")
 	}
@@ -163,9 +163,9 @@ func TestTimeoutCalculation(t *testing.T) {
 
 func TestMemoryLimitConversion(t *testing.T) {
 	tests := []struct {
-		name        string
-		limitBytes  int64
-		limitMB     int64
+		name       string
+		limitBytes int64
+		limitMB    int64
 	}{
 		{"256MB", 256 * 1024 * 1024, 256},
 		{"512MB", 512 * 1024 * 1024, 512},

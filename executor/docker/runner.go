@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -87,7 +88,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	if err := ioutil.WriteFile(sourceFilePath, []byte(code), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write source code: %w", err)
 	}
-	
+
 	if submissionID > 0 {
 		log.Printf("[Submission %d] Created source file at %s, bind mounting to /app", submissionID, sourceFilePath)
 	} else {
@@ -111,7 +112,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		AttachStdout: true,
 		AttachStderr: true,
 	}, &container.HostConfig{
-		Binds: []string{fmt.Sprintf("%s:/app", tempDir)},
 		Resources: container.Resources{
 			Memory: memoryLimitBytes,
 		},
@@ -140,6 +140,11 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
 
+	// Copy source file into container using Docker CopyToContainer API
+	if err := copyFileToContainer(cli, ctx, resp.ID, sourceFilePath, config.SourceFile, submissionID); err != nil {
+		return nil, fmt.Errorf("failed to copy source file to container: %w", err)
+	}
+
 	// List files before compilation to check source file exists
 	preCompileListConfig := types.ExecConfig{
 		Cmd:          []string{"ls", "-la"},
@@ -150,17 +155,17 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pre-compile ls exec: %w", err)
 	}
-	
+
 	preCompileListResp, err := cli.ContainerExecAttach(ctx, preCompileListExecID.ID, types.ExecStartCheck{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach to pre-compile ls exec: %w", err)
 	}
 	defer preCompileListResp.Close()
-	
+
 	if err := cli.ContainerExecStart(ctx, preCompileListExecID.ID, types.ExecStartCheck{}); err != nil {
 		return nil, fmt.Errorf("failed to start pre-compile ls exec: %w", err)
 	}
-	
+
 	var preCompileListOutput bytes.Buffer
 	io.Copy(&preCompileListOutput, preCompileListResp.Reader)
 	if submissionID > 0 {
@@ -206,8 +211,12 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		var compileOutput bytes.Buffer
 		io.Copy(&compileOutput, execResp.Reader)
 		compileOutputStr := compileOutput.String()
-		
-		if inspect.ExitCode != 0 {
+
+		// Check for compilation failure - either non-zero exit code OR error messages in output
+		compilationFailed := inspect.ExitCode != 0 || strings.Contains(compileOutputStr, "fatal error") ||
+			strings.Contains(compileOutputStr, "No such file") || strings.Contains(compileOutputStr, "error:")
+
+		if compilationFailed {
 			if submissionID > 0 {
 				log.Printf("[Submission %d] Compilation failed with exit code %d: %s", submissionID, inspect.ExitCode, compileOutputStr)
 			} else {
@@ -220,7 +229,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 				MemoryKB:   0,
 			}, nil
 		}
-		
+
 		if submissionID > 0 {
 			log.Printf("[Submission %d] Compilation completed successfully. Output: %s", submissionID, compileOutputStr)
 		} else {
@@ -237,17 +246,17 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ls exec: %w", err)
 		}
-		
+
 		listResp, err := cli.ContainerExecAttach(ctx, listExecID.ID, types.ExecStartCheck{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to attach to ls exec: %w", err)
 		}
 		defer listResp.Close()
-		
+
 		if err := cli.ContainerExecStart(ctx, listExecID.ID, types.ExecStartCheck{}); err != nil {
 			return nil, fmt.Errorf("failed to start ls exec: %w", err)
 		}
-		
+
 		var listOutput bytes.Buffer
 		io.Copy(&listOutput, listResp.Reader)
 		if submissionID > 0 {
@@ -267,7 +276,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 			if err != nil {
 				return nil, fmt.Errorf("failed to create chmod exec: %w", err)
 			}
-			
+
 			if err := cli.ContainerExecStart(ctx, chmodExecID.ID, types.ExecStartCheck{}); err != nil {
 				return nil, fmt.Errorf("failed to start chmod exec: %w", err)
 			}
@@ -323,12 +332,12 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	memoryDone := make(chan int64)
 	go func() {
 		var maxMemory uint64 = 1024 * 1024 // Default 1MB in bytes
-		
+
 		// Monitor for a maximum duration to prevent hanging
 		timeout := time.After(time.Duration(timeLimitSeconds*1.5) * time.Second)
 		ticker := time.NewTicker(10 * time.Millisecond)
 		defer ticker.Stop()
-		
+
 		for {
 			select {
 			case <-timeout:
@@ -345,7 +354,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 					continue // Continue monitoring on decode error
 				}
 				stats.Body.Close()
-				
+
 				if statsData.MemoryStats.Usage > 0 && statsData.MemoryStats.Usage > maxMemory {
 					maxMemory = statsData.MemoryStats.Usage
 				}
@@ -407,7 +416,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 			MemoryKB:   memoryUsageKB,
 		}, nil
 	}
-	
+
 	// Check memory limit
 	if memoryUsageKB*1024 > memoryLimitBytes {
 		return &ExecutionResult{
@@ -424,11 +433,55 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	} else {
 		log.Printf("Program executed successfully. Output: %q", finalOutput)
 	}
-	
+
 	return &ExecutionResult{
 		Status:     "ACCEPTED",
 		Output:     finalOutput,
 		TimeMillis: execTime.Milliseconds(),
 		MemoryKB:   memoryUsageKB,
 	}, nil
+}
+
+// copyFileToContainer copies a file from the host to the container using Docker's CopyToContainer API
+func copyFileToContainer(cli *client.Client, ctx context.Context, containerID, hostFilePath, containerFileName string, submissionID int64) error {
+	// Read the source file content
+	fileContent, err := ioutil.ReadFile(hostFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read source file: %w", err)
+	}
+
+	// Create a tar archive containing the file
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+
+	header := &tar.Header{
+		Name: containerFileName,
+		Mode: 0644,
+		Size: int64(len(fileContent)),
+	}
+
+	if err := tw.WriteHeader(header); err != nil {
+		return fmt.Errorf("failed to write tar header: %w", err)
+	}
+
+	if _, err := tw.Write(fileContent); err != nil {
+		return fmt.Errorf("failed to write file content to tar: %w", err)
+	}
+
+	if err := tw.Close(); err != nil {
+		return fmt.Errorf("failed to close tar writer: %w", err)
+	}
+
+	// Copy the tar archive to the container
+	if err := cli.CopyToContainer(ctx, containerID, "/app", &buf, types.CopyToContainerOptions{}); err != nil {
+		return fmt.Errorf("failed to copy to container: %w", err)
+	}
+
+	if submissionID > 0 {
+		log.Printf("[Submission %d] Successfully copied %s to container /app/%s", submissionID, hostFilePath, containerFileName)
+	} else {
+		log.Printf("Successfully copied %s to container /app/%s", hostFilePath, containerFileName)
+	}
+
+	return nil
 }

@@ -248,7 +248,7 @@ print(total)
 	for i := 1; i <= 1000; i++ {
 		largeInput += "1\n"
 	}
-	
+
 	return CreateTestSubmission(
 		12,
 		"PYTHON",
@@ -262,9 +262,9 @@ print(total)
 }
 
 type ExpectedResult struct {
-	OverallStatus string
-	TestCaseResults map[string]string
-	ShouldHaveTime bool
+	OverallStatus    string
+	TestCaseResults  map[string]string
+	ShouldHaveTime   bool
 	ShouldHaveMemory bool
 }
 
@@ -272,26 +272,26 @@ func AssertSubmissionResult(result types.ResultNotificationMessage, expected Exp
 	if result.Status != expected.OverallStatus {
 		return false
 	}
-	
+
 	if len(result.Results) != len(expected.TestCaseResults) {
 		return false
 	}
-	
+
 	for _, tcResult := range result.Results {
 		expectedStatus, exists := expected.TestCaseResults[tcResult.TestCaseID]
 		if !exists || tcResult.Status != expectedStatus {
 			return false
 		}
 	}
-	
+
 	if expected.ShouldHaveTime && result.TimeTaken <= 0 {
 		return false
 	}
-	
+
 	if expected.ShouldHaveMemory && result.MemoryUsed <= 0 {
 		return false
 	}
-	
+
 	return true
 }
 
