@@ -93,9 +93,15 @@ func (w *Worker) process(job amqp091.Delivery) {
 
 		status := computeTestCaseStatus(execResult, string(decodedExpectedOutput))
 
-		log.Printf("[Submission %d] [Worker %d] Test case %s failed. Status: %s, Expected: %q, Actual: %q",
-			submission.SubmissionID, w.id, testCase.TestCaseID, status,
-			strings.TrimSpace(string(decodedExpectedOutput)), strings.TrimSpace(execResult.Output))
+		if status != "PASSED" {
+			log.Printf("[Submission %d] [Worker %d] Test case %s failed. Status: %s, Expected: %q, Actual: %q",
+				submission.SubmissionID, w.id, testCase.TestCaseID, status,
+				strings.TrimSpace(string(decodedExpectedOutput)), strings.TrimSpace(execResult.Output))
+		} else {
+			log.Printf("[Submission %d] [Worker %d] Test case %s passed. Expected: %q, Actual: %q",
+				submission.SubmissionID, w.id, testCase.TestCaseID,
+				strings.TrimSpace(string(decodedExpectedOutput)), strings.TrimSpace(execResult.Output))
+		}
 
 		results = append(results, types.TestCaseResultMessage{
 			TestCaseID: testCase.TestCaseID,

@@ -183,6 +183,41 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 				MemoryKB:   0,
 			}, nil
 		}
+		
+		if submissionID > 0 {
+			log.Printf("[Submission %d] Compilation completed successfully", submissionID)
+		} else {
+			log.Printf("Compilation completed successfully")
+		}
+
+		// List files after compilation to debug
+		listConfig := types.ExecConfig{
+			Cmd:          []string{"ls", "-la"},
+			AttachStdout: true,
+			AttachStderr: true,
+		}
+		listExecID, err := cli.ContainerExecCreate(ctx, resp.ID, listConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ls exec: %w", err)
+		}
+		
+		listResp, err := cli.ContainerExecAttach(ctx, listExecID.ID, types.ExecStartCheck{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to attach to ls exec: %w", err)
+		}
+		defer listResp.Close()
+		
+		if err := cli.ContainerExecStart(ctx, listExecID.ID, types.ExecStartCheck{}); err != nil {
+			return nil, fmt.Errorf("failed to start ls exec: %w", err)
+		}
+		
+		var listOutput bytes.Buffer
+		io.Copy(&listOutput, listResp.Reader)
+		if submissionID > 0 {
+			log.Printf("[Submission %d] Files after compilation: %s", submissionID, listOutput.String())
+		} else {
+			log.Printf("Files after compilation: %s", listOutput.String())
+		}
 
 		// For C++, make the executable file executable
 		if language == "CPP" {
