@@ -54,8 +54,10 @@ func (w *Worker) process(job amqp091.Delivery) {
 		return
 	}
 	var results []types.TestCaseResultMessage
-	for _, testCase := range submission.TestCases {
-		log.Printf("[Submission %d] [Worker %d] Running test case %s.", submission.SubmissionID, w.id, testCase.TestCaseID)
+	totalTestCases := len(submission.TestCases)
+	for i, testCase := range submission.TestCases {
+		testCaseIndex := i + 1
+		log.Printf("[Submission %d] [Worker %d] TestCase %d/%d: Starting execution", submission.SubmissionID, w.id, testCaseIndex, totalTestCases)
 
 		decodedInput, err := base64.StdEncoding.DecodeString(testCase.Input)
 		if err != nil {
@@ -94,13 +96,12 @@ func (w *Worker) process(job amqp091.Delivery) {
 		status := computeTestCaseStatus(execResult, string(decodedExpectedOutput))
 
 		if status != "PASSED" {
-			log.Printf("[Submission %d] [Worker %d] Test case %s failed. Status: %s, Expected: %q, Actual: %q",
-				submission.SubmissionID, w.id, testCase.TestCaseID, status,
+			log.Printf("[Submission %d] [Worker %d] TestCase %d/%d: %s - Expected: %q, Actual: %q",
+				submission.SubmissionID, w.id, testCaseIndex, totalTestCases, status,
 				strings.TrimSpace(string(decodedExpectedOutput)), strings.TrimSpace(execResult.Output))
 		} else {
-			log.Printf("[Submission %d] [Worker %d] Test case %s passed. Expected: %q, Actual: %q",
-				submission.SubmissionID, w.id, testCase.TestCaseID,
-				strings.TrimSpace(string(decodedExpectedOutput)), strings.TrimSpace(execResult.Output))
+			log.Printf("[Submission %d] [Worker %d] TestCase %d/%d: PASSED",
+				submission.SubmissionID, w.id, testCaseIndex, totalTestCases)
 		}
 
 		results = append(results, types.TestCaseResultMessage{
@@ -125,6 +126,7 @@ func (w *Worker) process(job amqp091.Delivery) {
 
 func sendResults(submissionID int64, results []types.TestCaseResultMessage, w *Worker) error {
 	overallStatus, maxTime, maxMemory := computeOverallStatus(results)
+	log.Printf("[Submission %d] [Worker %d] Overall Status: %s (Time: %.3fs, Memory: %dKB)", submissionID, w.id, overallStatus, maxTime, maxMemory)
 
 	resultNotification := types.ResultNotificationMessage{
 		SubmissionID: submissionID,

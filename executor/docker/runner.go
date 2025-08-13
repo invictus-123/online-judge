@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -89,11 +88,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		return nil, fmt.Errorf("failed to write source code: %w", err)
 	}
 
-	if submissionID > 0 {
-		log.Printf("[Submission %d] Created source file at %s, bind mounting to /app", submissionID, sourceFilePath)
-	} else {
-		log.Printf("Created source file at %s, bind mounting to /app", sourceFilePath)
-	}
 
 	// Pull the Docker image if it doesn't exist
 	reader, err := cli.ImagePull(ctx, config.Image, types.ImagePullOptions{})
@@ -121,17 +115,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	}
 	defer func() {
 		// Ensure container is removed
-		if submissionID > 0 {
-			log.Printf("[Submission %d] Removing container %s", submissionID, resp.ID)
-		} else {
-			log.Printf("Removing container %s", resp.ID)
-		}
 		if err := cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{Force: true}); err != nil {
-			if submissionID > 0 {
-				log.Printf("[Submission %d] Failed to remove container %s: %v", submissionID, resp.ID, err)
-			} else {
-				log.Printf("Failed to remove container %s: %v", resp.ID, err)
-			}
 		}
 	}()
 
@@ -145,42 +129,9 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		return nil, fmt.Errorf("failed to copy source file to container: %w", err)
 	}
 
-	// List files before compilation to check source file exists
-	preCompileListConfig := types.ExecConfig{
-		Cmd:          []string{"ls", "-la"},
-		AttachStdout: true,
-		AttachStderr: true,
-	}
-	preCompileListExecID, err := cli.ContainerExecCreate(ctx, resp.ID, preCompileListConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pre-compile ls exec: %w", err)
-	}
-
-	preCompileListResp, err := cli.ContainerExecAttach(ctx, preCompileListExecID.ID, types.ExecStartCheck{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach to pre-compile ls exec: %w", err)
-	}
-	defer preCompileListResp.Close()
-
-	if err := cli.ContainerExecStart(ctx, preCompileListExecID.ID, types.ExecStartCheck{}); err != nil {
-		return nil, fmt.Errorf("failed to start pre-compile ls exec: %w", err)
-	}
-
-	var preCompileListOutput bytes.Buffer
-	io.Copy(&preCompileListOutput, preCompileListResp.Reader)
-	if submissionID > 0 {
-		log.Printf("[Submission %d] Files before compilation: %s", submissionID, preCompileListOutput.String())
-	} else {
-		log.Printf("Files before compilation: %s", preCompileListOutput.String())
-	}
 
 	// --- COMPILE STEP ---
 	if config.CompileCmd != nil {
-		if submissionID > 0 {
-			log.Printf("[Submission %d] Compiling code in container %s with command: %v", submissionID, resp.ID, config.CompileCmd)
-		} else {
-			log.Printf("Compiling code in container %s with command: %v", resp.ID, config.CompileCmd)
-		}
 		execConfig := types.ExecConfig{
 			Cmd:          config.CompileCmd,
 			AttachStdout: true,
@@ -217,11 +168,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 			strings.Contains(compileOutputStr, "No such file") || strings.Contains(compileOutputStr, "error:")
 
 		if compilationFailed {
-			if submissionID > 0 {
-				log.Printf("[Submission %d] Compilation failed with exit code %d: %s", submissionID, inspect.ExitCode, compileOutputStr)
-			} else {
-				log.Printf("Compilation failed with exit code %d: %s", inspect.ExitCode, compileOutputStr)
-			}
 			return &ExecutionResult{
 				Status:     "COMPILATION_ERROR",
 				Output:     compileOutputStr,
@@ -230,40 +176,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 			}, nil
 		}
 
-		if submissionID > 0 {
-			log.Printf("[Submission %d] Compilation completed successfully. Output: %s", submissionID, compileOutputStr)
-		} else {
-			log.Printf("Compilation completed successfully. Output: %s", compileOutputStr)
-		}
 
-		// List files after compilation to debug
-		listConfig := types.ExecConfig{
-			Cmd:          []string{"ls", "-la"},
-			AttachStdout: true,
-			AttachStderr: true,
-		}
-		listExecID, err := cli.ContainerExecCreate(ctx, resp.ID, listConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ls exec: %w", err)
-		}
-
-		listResp, err := cli.ContainerExecAttach(ctx, listExecID.ID, types.ExecStartCheck{})
-		if err != nil {
-			return nil, fmt.Errorf("failed to attach to ls exec: %w", err)
-		}
-		defer listResp.Close()
-
-		if err := cli.ContainerExecStart(ctx, listExecID.ID, types.ExecStartCheck{}); err != nil {
-			return nil, fmt.Errorf("failed to start ls exec: %w", err)
-		}
-
-		var listOutput bytes.Buffer
-		io.Copy(&listOutput, listResp.Reader)
-		if submissionID > 0 {
-			log.Printf("[Submission %d] Files after compilation: %s", submissionID, listOutput.String())
-		} else {
-			log.Printf("Files after compilation: %s", listOutput.String())
-		}
 
 		// For C++, make the executable file executable
 		if language == "CPP" {
@@ -284,12 +197,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	}
 
 	// --- EXECUTION STEP ---
-	// Execute the program and redirect output to files
-	if submissionID > 0 {
-		log.Printf("[Submission %d] Executing code in container %s", submissionID, resp.ID)
-	} else {
-		log.Printf("Executing code in container %s", resp.ID)
-	}
 
 	// Create execution command that redirects stdout/stderr to files
 	execConfig := types.ExecConfig{
@@ -313,11 +220,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	}
 
 	// Write input to stdin
-	if submissionID > 0 {
-		log.Printf("[Submission %d] Providing input to program: %q", submissionID, input)
-	} else {
-		log.Printf("Providing input to program: %q", input)
-	}
 	_, err = execResp.Conn.Write([]byte(input))
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to stdin: %w", err)
@@ -409,11 +311,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	}
 
 	if inspect.ExitCode != 0 {
-		if submissionID > 0 {
-			log.Printf("[Submission %d] Runtime error with exit code %d. Stderr: %q", submissionID, inspect.ExitCode, stderr)
-		} else {
-			log.Printf("Runtime error with exit code %d. Stderr: %q", inspect.ExitCode, stderr)
-		}
 
 		// Return stderr for runtime errors, stdout for output if stderr is empty
 		errorOutput := stderr
@@ -439,11 +336,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		}, nil
 	}
 
-	if submissionID > 0 {
-		log.Printf("[Submission %d] Program executed successfully. Output: %q", submissionID, stdout)
-	} else {
-		log.Printf("Program executed successfully. Output: %q", stdout)
-	}
 
 	return &ExecutionResult{
 		Status:     "ACCEPTED",
@@ -488,11 +380,6 @@ func copyFileToContainer(cli *client.Client, ctx context.Context, containerID, h
 		return fmt.Errorf("failed to copy to container: %w", err)
 	}
 
-	if submissionID > 0 {
-		log.Printf("[Submission %d] Successfully copied %s to container /app/%s", submissionID, hostFilePath, containerFileName)
-	} else {
-		log.Printf("Successfully copied %s to container /app/%s", hostFilePath, containerFileName)
-	}
 
 	return nil
 }
@@ -502,18 +389,12 @@ func readOutputFiles(cli *client.Client, ctx context.Context, containerID string
 	// Read stdout file
 	stdoutContent, err := readFileFromContainer(cli, ctx, containerID, "/app/stdout.txt")
 	if err != nil {
-		if submissionID > 0 {
-			log.Printf("[Submission %d] Warning: could not read stdout.txt: %v", submissionID, err)
-		}
 		stdoutContent = "" // Not an error, file might not exist if no output
 	}
 
 	// Read stderr file
 	stderrContent, err := readFileFromContainer(cli, ctx, containerID, "/app/stderr.txt")
 	if err != nil {
-		if submissionID > 0 {
-			log.Printf("[Submission %d] Warning: could not read stderr.txt: %v", submissionID, err)
-		}
 		stderrContent = "" // Not an error, file might not exist if no errors
 	}
 
