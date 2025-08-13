@@ -16,7 +16,7 @@ int main() {
   [SubmissionLanguage.JAVA]: `import java.util.*;
 import java.io.*;
 
-public class Solution {
+public class Main {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         // Your code here
