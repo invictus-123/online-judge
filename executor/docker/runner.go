@@ -40,7 +40,7 @@ var langConfigs = map[string]LanguageConfig{
 		Image:      "openjdk:11-jdk-slim",
 		SourceFile: "Main.java",
 		CompileCmd: []string{"javac", "Main.java"},
-		ExecuteCmd: []string{"java", "Main"},
+		ExecuteCmd: []string{"java", "-cp", ".", "Main"},
 	},
 	"PYTHON": {
 		Image:      "python:3.9-slim",
@@ -59,6 +59,11 @@ var langConfigs = map[string]LanguageConfig{
 
 // RunInContainer creates a Docker container, executes the code, and returns the result.
 func RunInContainer(language, code, input string) (*ExecutionResult, error) {
+	return RunInContainerWithLimits(0, language, code, input, 2.0, 256*1024*1024) // 2 seconds, 256MB
+}
+
+// RunInContainerWithLimits creates a Docker container with custom limits, executes the code, and returns the result.
+func RunInContainerWithLimits(submissionID int64, language, code, input string, timeLimitSeconds float64, memoryLimitBytes int64) (*ExecutionResult, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -102,7 +107,7 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 	}, &container.HostConfig{
 		Binds: []string{fmt.Sprintf("%s:/app", tempDir)},
 		Resources: container.Resources{
-			Memory: 256 * 1024 * 1024, // 256MB memory limit
+			Memory: memoryLimitBytes,
 		},
 	}, nil, nil, "oj-"+uuid.New().String())
 	if err != nil {
@@ -110,9 +115,17 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 	}
 	defer func() {
 		// Ensure container is removed
-		log.Printf("Removing container %s", resp.ID)
+		if submissionID > 0 {
+			log.Printf("[Submission %d] Removing container %s", submissionID, resp.ID)
+		} else {
+			log.Printf("Removing container %s", resp.ID)
+		}
 		if err := cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{Force: true}); err != nil {
-			log.Printf("Failed to remove container %s: %v", resp.ID, err)
+			if submissionID > 0 {
+				log.Printf("[Submission %d] Failed to remove container %s: %v", submissionID, resp.ID, err)
+			} else {
+				log.Printf("Failed to remove container %s: %v", resp.ID, err)
+			}
 		}
 	}()
 
@@ -123,7 +136,11 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 
 	// --- COMPILE STEP ---
 	if config.CompileCmd != nil {
-		log.Printf("Compiling code in container %s", resp.ID)
+		if submissionID > 0 {
+			log.Printf("[Submission %d] Compiling code in container %s", submissionID, resp.ID)
+		} else {
+			log.Printf("Compiling code in container %s", resp.ID)
+		}
 		execConfig := types.ExecConfig{
 			Cmd:          config.CompileCmd,
 			AttachStdout: true,
@@ -153,13 +170,39 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 		if inspect.ExitCode != 0 {
 			var compileErr bytes.Buffer
 			io.Copy(&compileErr, execResp.Reader)
-			return &ExecutionResult{Status: "COMPILATION_ERROR", Output: compileErr.String()}, nil
+			return &ExecutionResult{
+				Status:     "COMPILATION_ERROR",
+				Output:     compileErr.String(),
+				TimeMillis: 0,
+				MemoryKB:   0,
+			}, nil
+		}
+
+		// For C++, make the executable file executable
+		if language == "CPP" {
+			chmodConfig := types.ExecConfig{
+				Cmd:          []string{"chmod", "+x", "main"},
+				AttachStdout: false,
+				AttachStderr: false,
+			}
+			chmodExecID, err := cli.ContainerExecCreate(ctx, resp.ID, chmodConfig)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create chmod exec: %w", err)
+			}
+			
+			if err := cli.ContainerExecStart(ctx, chmodExecID.ID, types.ExecStartCheck{}); err != nil {
+				return nil, fmt.Errorf("failed to start chmod exec: %w", err)
+			}
 		}
 	}
 
 	// --- EXECUTION STEP ---
 	// Execute the program using docker exec
-	log.Printf("Executing code in container %s", resp.ID)
+	if submissionID > 0 {
+		log.Printf("[Submission %d] Executing code in container %s", submissionID, resp.ID)
+	} else {
+		log.Printf("Executing code in container %s", resp.ID)
+	}
 	execConfig := types.ExecConfig{
 		Cmd:          config.ExecuteCmd,
 		AttachStdin:  true,
@@ -191,6 +234,41 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 
 	startTime := time.Now()
 	var outputBuffer bytes.Buffer
+	var memoryUsageKB int64
+
+	// Start memory monitoring
+	memoryDone := make(chan int64)
+	go func() {
+		var maxMemory uint64 = 1024 * 1024 // Default 1MB in bytes
+		
+		// Monitor for a maximum duration to prevent hanging
+		timeout := time.After(time.Duration(timeLimitSeconds*1.5) * time.Second)
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
+		
+		for {
+			select {
+			case <-timeout:
+				memoryDone <- int64(maxMemory / 1024)
+				return
+			case <-ticker.C:
+				stats, err := cli.ContainerStats(ctx, resp.ID, false)
+				if err != nil {
+					continue // Continue monitoring on error
+				}
+				var statsData types.StatsJSON
+				if err := json.NewDecoder(stats.Body).Decode(&statsData); err != nil {
+					stats.Body.Close()
+					continue // Continue monitoring on decode error
+				}
+				stats.Body.Close()
+				
+				if statsData.MemoryStats.Usage > 0 && statsData.MemoryStats.Usage > maxMemory {
+					maxMemory = statsData.MemoryStats.Usage
+				}
+			}
+		}
+	}()
 
 	// Read output with timeout
 	done := make(chan bool)
@@ -199,12 +277,31 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 		done <- true
 	}()
 
+	timeLimit := time.Duration(timeLimitSeconds * float64(time.Second))
+	var timedOut bool
 	select {
-	case <-time.After(2 * time.Second): // 2-second time limit
+	case <-time.After(timeLimit):
 		cli.ContainerKill(ctx, resp.ID, "SIGKILL")
-		return &ExecutionResult{Status: "TIME_LIMIT_EXCEEDED", Output: outputBuffer.String()}, nil
+		timedOut = true
 	case <-done:
 		// Execution completed, check exit code
+	}
+
+	// Wait for memory monitoring to complete
+	memoryUsageKB = <-memoryDone
+	if memoryUsageKB <= 0 {
+		memoryUsageKB = 1024 // Default to 1MB if we can't measure
+	}
+
+	execTime := time.Since(startTime)
+
+	if timedOut {
+		return &ExecutionResult{
+			Status:     "TIME_LIMIT_EXCEEDED",
+			Output:     outputBuffer.String(),
+			TimeMillis: execTime.Milliseconds(),
+			MemoryKB:   memoryUsageKB,
+		}, nil
 	}
 
 	// Check execution result
@@ -214,26 +311,26 @@ func RunInContainer(language, code, input string) (*ExecutionResult, error) {
 	}
 
 	if inspect.ExitCode != 0 {
-		return &ExecutionResult{Status: "RUNTIME_ERROR", Output: outputBuffer.String()}, nil
+		return &ExecutionResult{
+			Status:     "RUNTIME_ERROR",
+			Output:     outputBuffer.String(),
+			TimeMillis: execTime.Milliseconds(),
+			MemoryKB:   memoryUsageKB,
+		}, nil
 	}
-
-	execTime := time.Since(startTime)
-
-	// Inspect container for memory usage
-	stats, err := cli.ContainerStats(ctx, resp.ID, false)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get container stats: %w", err)
+	
+	// Check memory limit
+	if memoryUsageKB*1024 > memoryLimitBytes {
+		return &ExecutionResult{
+			Status:     "MEMORY_LIMIT_EXCEEDED",
+			Output:     strings.TrimSpace(outputBuffer.String()),
+			TimeMillis: execTime.Milliseconds(),
+			MemoryKB:   memoryUsageKB,
+		}, nil
 	}
-	var statsData types.StatsJSON
-	if err := json.NewDecoder(stats.Body).Decode(&statsData); err != nil {
-		return nil, fmt.Errorf("failed to decode container stats: %w", err)
-	}
-	stats.Body.Close()
-
-	memoryUsageKB := int64(statsData.MemoryStats.Usage / 1024)
 
 	return &ExecutionResult{
-		Status:     "ACCEPTED", // This should be compared with expected output later
+		Status:     "ACCEPTED",
 		Output:     strings.TrimSpace(outputBuffer.String()),
 		TimeMillis: execTime.Milliseconds(),
 		MemoryKB:   memoryUsageKB,

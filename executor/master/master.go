@@ -11,13 +11,13 @@ import (
 )
 
 type Master struct {
-	mqClient    *rabbitmq.Client
+	mqClient    rabbitmq.ClientInterface
 	jobQueue    chan amqp091.Delivery
 	workerCount int
 	queueName   string
 }
 
-func NewMaster(mqClient *rabbitmq.Client, workerCount int, queueName string) (*Master, error) {
+func NewMaster(mqClient rabbitmq.ClientInterface, workerCount int, queueName string) (*Master, error) {
 	return &Master{
 		mqClient:    mqClient,
 		jobQueue:    make(chan amqp091.Delivery, workerCount),
@@ -50,7 +50,7 @@ func (m *Master) consumeAndDispatch() {
 			d.Ack(false) // Ack the malformed request
 			continue
 		}
-		log.Printf("Received submission %d. Dispatching to a worker.", submission.SubmissionID)
+		log.Printf("[Submission %d] Received submission. Dispatching to a worker.", submission.SubmissionID)
 		m.jobQueue <- d
 	}
 }
