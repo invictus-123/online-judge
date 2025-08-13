@@ -55,7 +55,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">online-judge/executor/docker/runner.go (5.7%)</option>
+				<option value="file0">online-judge/executor/docker/runner.go (4.4%)</option>
 				
 				<option value="file1">online-judge/executor/master/master.go (5.9%)</option>
 				
@@ -63,7 +63,7 @@
 				
 				<option value="file3">online-judge/executor/testutil/testutil.go (93.9%)</option>
 				
-				<option value="file4">online-judge/executor/worker/worker.go (40.0%)</option>
+				<option value="file4">online-judge/executor/worker/worker.go (37.2%)</option>
 				
 				</select>
 			</div>
@@ -80,13 +80,13 @@
 		<pre class="file" id="file0" style="display: none">package docker
 
 import (
+        "archive/tar"
         "bytes"
         "context"
         "encoding/json"
         "fmt"
         "io"
         "io/ioutil"
-        "log"
         "os"
         "strings"
         "time"
@@ -167,6 +167,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
                 return nil, fmt.Errorf("failed to write source code: %w", err)
         }</span>
 
+
         // Pull the Docker image if it doesn't exist
         <span class="cov0" title="0">reader, err := cli.ImagePull(ctx, config.Image, types.ImagePullOptions{})
         if err != nil </span><span class="cov0" title="0">{
@@ -184,7 +185,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
                 AttachStdout: true,
                 AttachStderr: true,
         }, &amp;container.HostConfig{
-                Binds: []string{fmt.Sprintf("%s:/app", tempDir)},
                 Resources: container.Resources{
                         Memory: memoryLimitBytes,
                 },
@@ -194,18 +194,8 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
         }</span>
         <span class="cov0" title="0">defer func() </span><span class="cov0" title="0">{
                 // Ensure container is removed
-                if submissionID &gt; 0 </span><span class="cov0" title="0">{
-                        log.Printf("[Submission %d] Removing container %s", submissionID, resp.ID)
-                }</span> else<span class="cov0" title="0"> {
-                        log.Printf("Removing container %s", resp.ID)
+                if err := cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{Force: true}); err != nil </span>{<span class="cov0" title="0">
                 }</span>
-                <span class="cov0" title="0">if err := cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{Force: true}); err != nil </span><span class="cov0" title="0">{
-                        if submissionID &gt; 0 </span><span class="cov0" title="0">{
-                                log.Printf("[Submission %d] Failed to remove container %s: %v", submissionID, resp.ID, err)
-                        }</span> else<span class="cov0" title="0"> {
-                                log.Printf("Failed to remove container %s: %v", resp.ID, err)
-                        }</span>
-                }
         }()
 
         // Start the container so we can execute commands in it
@@ -213,14 +203,15 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
                 return nil, fmt.Errorf("failed to start container: %w", err)
         }</span>
 
+        // Copy source file into container using Docker CopyToContainer API
+        <span class="cov0" title="0">if err := copyFileToContainer(cli, ctx, resp.ID, sourceFilePath, config.SourceFile, submissionID); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to copy source file to container: %w", err)
+        }</span>
+
+
         // --- COMPILE STEP ---
         <span class="cov0" title="0">if config.CompileCmd != nil </span><span class="cov0" title="0">{
-                if submissionID &gt; 0 </span><span class="cov0" title="0">{
-                        log.Printf("[Submission %d] Compiling code in container %s", submissionID, resp.ID)
-                }</span> else<span class="cov0" title="0"> {
-                        log.Printf("Compiling code in container %s", resp.ID)
-                }</span>
-                <span class="cov0" title="0">execConfig := types.ExecConfig{
+                execConfig := types.ExecConfig{
                         Cmd:          config.CompileCmd,
                         AttachStdout: true,
                         AttachStderr: true,
@@ -246,16 +237,25 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
                         return nil, fmt.Errorf("failed to inspect compile exec: %w", err)
                 }</span>
 
-                <span class="cov0" title="0">if inspect.ExitCode != 0 </span><span class="cov0" title="0">{
-                        var compileErr bytes.Buffer
-                        io.Copy(&amp;compileErr, execResp.Reader)
+                // Always read compilation output (even on success)
+                <span class="cov0" title="0">var compileOutput bytes.Buffer
+                io.Copy(&amp;compileOutput, execResp.Reader)
+                compileOutputStr := compileOutput.String()
+
+                // Check for compilation failure - either non-zero exit code OR error messages in output
+                compilationFailed := inspect.ExitCode != 0 || strings.Contains(compileOutputStr, "fatal error") ||
+                        strings.Contains(compileOutputStr, "No such file") || strings.Contains(compileOutputStr, "error:")
+
+                if compilationFailed </span><span class="cov0" title="0">{
                         return &amp;ExecutionResult{
                                 Status:     "COMPILATION_ERROR",
-                                Output:     compileErr.String(),
+                                Output:     compileOutputStr,
                                 TimeMillis: 0,
                                 MemoryKB:   0,
                         }, nil
                 }</span>
+
+
 
                 // For C++, make the executable file executable
                 <span class="cov0" title="0">if language == "CPP" </span><span class="cov0" title="0">{
@@ -268,7 +268,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
                         if err != nil </span><span class="cov0" title="0">{
                                 return nil, fmt.Errorf("failed to create chmod exec: %w", err)
                         }</span>
-                        
+
                         <span class="cov0" title="0">if err := cli.ContainerExecStart(ctx, chmodExecID.ID, types.ExecStartCheck{}); err != nil </span><span class="cov0" title="0">{
                                 return nil, fmt.Errorf("failed to start chmod exec: %w", err)
                         }</span>
@@ -276,17 +276,11 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
         }
 
         // --- EXECUTION STEP ---
-        // Execute the program using docker exec
-        <span class="cov0" title="0">if submissionID &gt; 0 </span><span class="cov0" title="0">{
-                log.Printf("[Submission %d] Executing code in container %s", submissionID, resp.ID)
-        }</span> else<span class="cov0" title="0"> {
-                log.Printf("Executing code in container %s", resp.ID)
-        }</span>
+
+        // Create execution command that redirects stdout/stderr to files
         <span class="cov0" title="0">execConfig := types.ExecConfig{
-                Cmd:          config.ExecuteCmd,
-                AttachStdin:  true,
-                AttachStdout: true,
-                AttachStderr: true,
+                Cmd:         []string{"sh", "-c", strings.Join(config.ExecuteCmd, " ") + " &gt; /app/stdout.txt 2&gt; /app/stderr.txt"},
+                AttachStdin: true,
         }
         execID, err := cli.ContainerExecCreate(ctx, resp.ID, execConfig)
         if err != nil </span><span class="cov0" title="0">{
@@ -312,19 +306,18 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
         <span class="cov0" title="0">execResp.CloseWrite() // Close stdin to signal end of input
 
         startTime := time.Now()
-        var outputBuffer bytes.Buffer
         var memoryUsageKB int64
 
         // Start memory monitoring
         memoryDone := make(chan int64)
         go func() </span><span class="cov0" title="0">{
                 var maxMemory uint64 = 1024 * 1024 // Default 1MB in bytes
-                
+
                 // Monitor for a maximum duration to prevent hanging
                 timeout := time.After(time.Duration(timeLimitSeconds*1.5) * time.Second)
                 ticker := time.NewTicker(10 * time.Millisecond)
                 defer ticker.Stop()
-                
+
                 for </span><span class="cov0" title="0">{
                         select </span>{
                         case &lt;-timeout:<span class="cov0" title="0">
@@ -341,7 +334,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
                                         continue</span> // Continue monitoring on decode error
                                 }
                                 <span class="cov0" title="0">stats.Body.Close()
-                                
+
                                 if statsData.MemoryStats.Usage &gt; 0 &amp;&amp; statsData.MemoryStats.Usage &gt; maxMemory </span><span class="cov0" title="0">{
                                         maxMemory = statsData.MemoryStats.Usage
                                 }</span>
@@ -349,10 +342,11 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
                 }
         }()
 
-        // Read output with timeout
+        // Wait for execution completion with timeout
         <span class="cov0" title="0">done := make(chan bool)
         go func() </span><span class="cov0" title="0">{
-                io.Copy(&amp;outputBuffer, execResp.Reader)
+                // Wait for the process by reading from execResp
+                io.Copy(ioutil.Discard, execResp.Reader)
                 done &lt;- true
         }</span>()
 
@@ -377,7 +371,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
         if timedOut </span><span class="cov0" title="0">{
                 return &amp;ExecutionResult{
                         Status:     "TIME_LIMIT_EXCEEDED",
-                        Output:     outputBuffer.String(),
+                        Output:     "Time limit exceeded",
                         TimeMillis: execTime.Milliseconds(),
                         MemoryKB:   memoryUsageKB,
                 }, nil
@@ -389,31 +383,136 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
                 return nil, fmt.Errorf("failed to inspect execution exec: %w", err)
         }</span>
 
+        // Read output files from container
+        <span class="cov0" title="0">stdout, stderr, err := readOutputFiles(cli, ctx, resp.ID, submissionID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read output files: %w", err)
+        }</span>
+
         <span class="cov0" title="0">if inspect.ExitCode != 0 </span><span class="cov0" title="0">{
-                return &amp;ExecutionResult{
+
+                // Return stderr for runtime errors, stdout for output if stderr is empty
+                errorOutput := stderr
+                if strings.TrimSpace(errorOutput) == "" </span><span class="cov0" title="0">{
+                        errorOutput = stdout
+                }</span>
+
+                <span class="cov0" title="0">return &amp;ExecutionResult{
                         Status:     "RUNTIME_ERROR",
-                        Output:     outputBuffer.String(),
+                        Output:     strings.TrimSpace(errorOutput),
                         TimeMillis: execTime.Milliseconds(),
                         MemoryKB:   memoryUsageKB,
-                }, nil
-        }</span>
-        
+                }, nil</span>
+        }
+
         // Check memory limit
         <span class="cov0" title="0">if memoryUsageKB*1024 &gt; memoryLimitBytes </span><span class="cov0" title="0">{
                 return &amp;ExecutionResult{
                         Status:     "MEMORY_LIMIT_EXCEEDED",
-                        Output:     strings.TrimSpace(outputBuffer.String()),
+                        Output:     strings.TrimSpace(stdout),
                         TimeMillis: execTime.Milliseconds(),
                         MemoryKB:   memoryUsageKB,
                 }, nil
         }</span>
 
+
         <span class="cov0" title="0">return &amp;ExecutionResult{
                 Status:     "ACCEPTED",
-                Output:     strings.TrimSpace(outputBuffer.String()),
+                Output:     strings.TrimSpace(stdout),
                 TimeMillis: execTime.Milliseconds(),
                 MemoryKB:   memoryUsageKB,
         }, nil</span>
+}
+
+// copyFileToContainer copies a file from the host to the container using Docker's CopyToContainer API
+func copyFileToContainer(cli *client.Client, ctx context.Context, containerID, hostFilePath, containerFileName string, submissionID int64) error <span class="cov0" title="0">{
+        // Read the source file content
+        fileContent, err := ioutil.ReadFile(hostFilePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to read source file: %w", err)
+        }</span>
+
+        // Create a tar archive containing the file
+        <span class="cov0" title="0">var buf bytes.Buffer
+        tw := tar.NewWriter(&amp;buf)
+
+        header := &amp;tar.Header{
+                Name: containerFileName,
+                Mode: 0644,
+                Size: int64(len(fileContent)),
+        }
+
+        if err := tw.WriteHeader(header); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to write tar header: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if _, err := tw.Write(fileContent); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to write file content to tar: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if err := tw.Close(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to close tar writer: %w", err)
+        }</span>
+
+        // Copy the tar archive to the container
+        <span class="cov0" title="0">if err := cli.CopyToContainer(ctx, containerID, "/app", &amp;buf, types.CopyToContainerOptions{}); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to copy to container: %w", err)
+        }</span>
+
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// readOutputFiles reads stdout and stderr files from the container using Docker's CopyFromContainer API
+func readOutputFiles(cli *client.Client, ctx context.Context, containerID string, submissionID int64) (stdout, stderr string, err error) <span class="cov0" title="0">{
+        // Read stdout file
+        stdoutContent, err := readFileFromContainer(cli, ctx, containerID, "/app/stdout.txt")
+        if err != nil </span><span class="cov0" title="0">{
+                stdoutContent = "" // Not an error, file might not exist if no output
+        }</span>
+
+        // Read stderr file
+        <span class="cov0" title="0">stderrContent, err := readFileFromContainer(cli, ctx, containerID, "/app/stderr.txt")
+        if err != nil </span><span class="cov0" title="0">{
+                stderrContent = "" // Not an error, file might not exist if no errors
+        }</span>
+
+        <span class="cov0" title="0">return stdoutContent, stderrContent, nil</span>
+}
+
+// readFileFromContainer reads a single file from container using Docker's CopyFromContainer API
+func readFileFromContainer(cli *client.Client, ctx context.Context, containerID, filePath string) (string, error) <span class="cov0" title="0">{
+        // Copy file from container
+        reader, stat, err := cli.CopyFromContainer(ctx, containerID, filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to copy file from container: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer reader.Close()
+
+        // Create tar reader
+        tr := tar.NewReader(reader)
+
+        // Read the first (and should be only) file from the tar
+        header, err := tr.Next()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to read tar header: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if header.Typeflag != tar.TypeReg </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("expected regular file, got type %c", header.Typeflag)
+        }</span>
+
+        // Read file content
+        <span class="cov0" title="0">var content bytes.Buffer
+        _, err = io.Copy(&amp;content, tr)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to read file content: %w", err)
+        }</span>
+
+        // Log file size for debugging
+        <span class="cov0" title="0">_ = stat // Use stat to avoid unused variable error
+
+        return content.String(), nil</span>
 }
 </pre>
 		
@@ -857,7 +956,7 @@ print(total)
         for i := 1; i &lt;= 1000; i++ </span><span class="cov8" title="1">{
                 largeInput += "1\n"
         }</span>
-        
+
         <span class="cov8" title="1">return CreateTestSubmission(
                 12,
                 "PYTHON",
@@ -871,9 +970,9 @@ print(total)
 }
 
 type ExpectedResult struct {
-        OverallStatus string
-        TestCaseResults map[string]string
-        ShouldHaveTime bool
+        OverallStatus    string
+        TestCaseResults  map[string]string
+        ShouldHaveTime   bool
         ShouldHaveMemory bool
 }
 
@@ -881,26 +980,26 @@ func AssertSubmissionResult(result types.ResultNotificationMessage, expected Exp
         if result.Status != expected.OverallStatus </span><span class="cov8" title="1">{
                 return false
         }</span>
-        
+
         <span class="cov8" title="1">if len(result.Results) != len(expected.TestCaseResults) </span><span class="cov0" title="0">{
                 return false
         }</span>
-        
+
         <span class="cov8" title="1">for _, tcResult := range result.Results </span><span class="cov8" title="1">{
                 expectedStatus, exists := expected.TestCaseResults[tcResult.TestCaseID]
                 if !exists || tcResult.Status != expectedStatus </span><span class="cov0" title="0">{
                         return false
                 }</span>
         }
-        
+
         <span class="cov8" title="1">if expected.ShouldHaveTime &amp;&amp; result.TimeTaken &lt;= 0 </span><span class="cov0" title="0">{
                 return false
         }</span>
-        
+
         <span class="cov8" title="1">if expected.ShouldHaveMemory &amp;&amp; result.MemoryUsed &lt;= 0 </span><span class="cov0" title="0">{
                 return false
         }</span>
-        
+
         <span class="cov8" title="1">return true</span>
 }
 
@@ -1022,7 +1121,8 @@ func CreateInvalidOutputSubmission() types.SubmissionMessage <span class="cov8" 
                         },
                 },
         }
-}</pre>
+}</span>
+</pre>
 		
 		<pre class="file" id="file4" style="display: none">package worker
 
@@ -1080,8 +1180,10 @@ func (w *Worker) process(job amqp091.Delivery) <span class="cov0" title="0">{
                 return
         }</span>
         <span class="cov0" title="0">var results []types.TestCaseResultMessage
-        for _, testCase := range submission.TestCases </span><span class="cov0" title="0">{
-                log.Printf("[Submission %d] [Worker %d] Running test case %s.", submission.SubmissionID, w.id, testCase.TestCaseID)
+        totalTestCases := len(submission.TestCases)
+        for i, testCase := range submission.TestCases </span><span class="cov0" title="0">{
+                testCaseIndex := i + 1
+                log.Printf("[Submission %d] [Worker %d] TestCase %d/%d: Starting execution", submission.SubmissionID, w.id, testCaseIndex, totalTestCases)
 
                 decodedInput, err := base64.StdEncoding.DecodeString(testCase.Input)
                 if err != nil </span><span class="cov0" title="0">{
@@ -1118,8 +1220,17 @@ func (w *Worker) process(job amqp091.Delivery) <span class="cov0" title="0">{
                 }
 
                 <span class="cov0" title="0">status := computeTestCaseStatus(execResult, string(decodedExpectedOutput))
-                
-                results = append(results, types.TestCaseResultMessage{
+
+                if status != "PASSED" </span><span class="cov0" title="0">{
+                        log.Printf("[Submission %d] [Worker %d] TestCase %d/%d: %s - Expected: %q, Actual: %q",
+                                submission.SubmissionID, w.id, testCaseIndex, totalTestCases, status,
+                                strings.TrimSpace(string(decodedExpectedOutput)), strings.TrimSpace(execResult.Output))
+                }</span> else<span class="cov0" title="0"> {
+                        log.Printf("[Submission %d] [Worker %d] TestCase %d/%d: PASSED",
+                                submission.SubmissionID, w.id, testCaseIndex, totalTestCases)
+                }</span>
+
+                <span class="cov0" title="0">results = append(results, types.TestCaseResultMessage{
                         TestCaseID: testCase.TestCaseID,
                         Output:     base64.StdEncoding.EncodeToString([]byte(execResult.Output)),
                         Status:     status,
@@ -1141,7 +1252,8 @@ func (w *Worker) process(job amqp091.Delivery) <span class="cov0" title="0">{
 
 func sendResults(submissionID int64, results []types.TestCaseResultMessage, w *Worker) error <span class="cov0" title="0">{
         overallStatus, maxTime, maxMemory := computeOverallStatus(results)
-        
+        log.Printf("[Submission %d] [Worker %d] Overall Status: %s (Time: %.3fs, Memory: %dKB)", submissionID, w.id, overallStatus, maxTime, maxMemory)
+
         resultNotification := types.ResultNotificationMessage{
                 SubmissionID: submissionID,
                 Status:       overallStatus,
@@ -1170,10 +1282,10 @@ func computeTestCaseStatus(execResult *docker.ExecutionResult, expectedOutput st
         <span class="cov8" title="1">if execResult.Status == "RUNTIME_ERROR" </span><span class="cov8" title="1">{
                 return "RUNTIME_ERROR"
         }</span>
-        
+
         <span class="cov8" title="1">actualOutput := strings.TrimSpace(execResult.Output)
         expectedOutput = strings.TrimSpace(expectedOutput)
-        
+
         if actualOutput == expectedOutput </span><span class="cov8" title="1">{
                 return "PASSED"
         }</span>
@@ -1184,11 +1296,11 @@ func computeOverallStatus(results []types.TestCaseResultMessage) (string, float6
         if len(results) == 0 </span><span class="cov8" title="1">{
                 return "COMPILATION_ERROR", 0.0, 0
         }</span>
-        
+
         <span class="cov8" title="1">var maxTime float64
         var maxMemory int64
         overallStatus := "PASSED"
-        
+
         for _, result := range results </span><span class="cov8" title="1">{
                 if result.TimeTaken &gt; maxTime </span><span class="cov8" title="1">{
                         maxTime = result.TimeTaken
@@ -1196,7 +1308,7 @@ func computeOverallStatus(results []types.TestCaseResultMessage) (string, float6
                 <span class="cov8" title="1">if result.MemoryUsed &gt; maxMemory </span><span class="cov8" title="1">{
                         maxMemory = result.MemoryUsed
                 }</span>
-                
+
                 <span class="cov8" title="1">if result.Status == "COMPILATION_ERROR" </span><span class="cov8" title="1">{
                         overallStatus = "COMPILATION_ERROR"
                 }</span> else<span class="cov8" title="1"> if result.Status == "RUNTIME_ERROR" &amp;&amp; overallStatus == "PASSED" </span><span class="cov8" title="1">{
@@ -1209,7 +1321,7 @@ func computeOverallStatus(results []types.TestCaseResultMessage) (string, float6
                         overallStatus = "WRONG_ANSWER"
                 }</span>
         }
-        
+
         <span class="cov8" title="1">return overallStatus, maxTime, maxMemory</span>
 }
 </pre>
