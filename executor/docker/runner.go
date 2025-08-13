@@ -87,6 +87,12 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	if err := ioutil.WriteFile(sourceFilePath, []byte(code), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write source code: %w", err)
 	}
+	
+	if submissionID > 0 {
+		log.Printf("[Submission %d] Created source file at %s, bind mounting to /app", submissionID, sourceFilePath)
+	} else {
+		log.Printf("Created source file at %s, bind mounting to /app", sourceFilePath)
+	}
 
 	// Pull the Docker image if it doesn't exist
 	reader, err := cli.ImagePull(ctx, config.Image, types.ImagePullOptions{})
@@ -134,12 +140,41 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
 
+	// List files before compilation to check source file exists
+	preCompileListConfig := types.ExecConfig{
+		Cmd:          []string{"ls", "-la"},
+		AttachStdout: true,
+		AttachStderr: true,
+	}
+	preCompileListExecID, err := cli.ContainerExecCreate(ctx, resp.ID, preCompileListConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pre-compile ls exec: %w", err)
+	}
+	
+	preCompileListResp, err := cli.ContainerExecAttach(ctx, preCompileListExecID.ID, types.ExecStartCheck{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach to pre-compile ls exec: %w", err)
+	}
+	defer preCompileListResp.Close()
+	
+	if err := cli.ContainerExecStart(ctx, preCompileListExecID.ID, types.ExecStartCheck{}); err != nil {
+		return nil, fmt.Errorf("failed to start pre-compile ls exec: %w", err)
+	}
+	
+	var preCompileListOutput bytes.Buffer
+	io.Copy(&preCompileListOutput, preCompileListResp.Reader)
+	if submissionID > 0 {
+		log.Printf("[Submission %d] Files before compilation: %s", submissionID, preCompileListOutput.String())
+	} else {
+		log.Printf("Files before compilation: %s", preCompileListOutput.String())
+	}
+
 	// --- COMPILE STEP ---
 	if config.CompileCmd != nil {
 		if submissionID > 0 {
-			log.Printf("[Submission %d] Compiling code in container %s", submissionID, resp.ID)
+			log.Printf("[Submission %d] Compiling code in container %s with command: %v", submissionID, resp.ID, config.CompileCmd)
 		} else {
-			log.Printf("Compiling code in container %s", resp.ID)
+			log.Printf("Compiling code in container %s with command: %v", resp.ID, config.CompileCmd)
 		}
 		execConfig := types.ExecConfig{
 			Cmd:          config.CompileCmd,
@@ -167,27 +202,29 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 			return nil, fmt.Errorf("failed to inspect compile exec: %w", err)
 		}
 
+		// Always read compilation output (even on success)
+		var compileOutput bytes.Buffer
+		io.Copy(&compileOutput, execResp.Reader)
+		compileOutputStr := compileOutput.String()
+		
 		if inspect.ExitCode != 0 {
-			var compileErr bytes.Buffer
-			io.Copy(&compileErr, execResp.Reader)
-			compileErrMsg := compileErr.String()
 			if submissionID > 0 {
-				log.Printf("[Submission %d] Compilation failed with exit code %d: %s", submissionID, inspect.ExitCode, compileErrMsg)
+				log.Printf("[Submission %d] Compilation failed with exit code %d: %s", submissionID, inspect.ExitCode, compileOutputStr)
 			} else {
-				log.Printf("Compilation failed with exit code %d: %s", inspect.ExitCode, compileErrMsg)
+				log.Printf("Compilation failed with exit code %d: %s", inspect.ExitCode, compileOutputStr)
 			}
 			return &ExecutionResult{
 				Status:     "COMPILATION_ERROR",
-				Output:     compileErrMsg,
+				Output:     compileOutputStr,
 				TimeMillis: 0,
 				MemoryKB:   0,
 			}, nil
 		}
 		
 		if submissionID > 0 {
-			log.Printf("[Submission %d] Compilation completed successfully", submissionID)
+			log.Printf("[Submission %d] Compilation completed successfully. Output: %s", submissionID, compileOutputStr)
 		} else {
-			log.Printf("Compilation completed successfully")
+			log.Printf("Compilation completed successfully. Output: %s", compileOutputStr)
 		}
 
 		// List files after compilation to debug
