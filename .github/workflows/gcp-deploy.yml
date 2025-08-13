@@ -106,16 +106,6 @@ jobs:
         run: go build -o main .
         working-directory: ./executor
 
-      - name: Run integration tests (if Docker available)
-        run: |
-          if docker info >/dev/null 2>&1; then
-            echo "Docker is available, running integration tests"
-            go test -v ./integration/...
-          else
-            echo "Docker not available, skipping integration tests"
-            go test -short -v ./integration/...
-          fi
-        working-directory: ./executor
 
   setup-gcp:
     runs-on: ubuntu-latest

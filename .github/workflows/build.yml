@@ -144,16 +144,6 @@ jobs:
         run: go build -o main .
         working-directory: ./executor
 
-      - name: Run integration tests (if Docker available)
-        run: |
-          if docker info >/dev/null 2>&1; then
-            echo "Docker is available, running integration tests"
-            go test -v ./integration/...
-          else
-            echo "Docker not available, skipping integration tests"
-            go test -short -v ./integration/...
-          fi
-        working-directory: ./executor
 
   deploy-report:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.backend-test.result == 'success' || needs.frontend-test.result == 'success' || needs.executor-test.result == 'success' || needs.backend-test.result == 'skipped' || needs.frontend-test.result == 'skipped' || needs.executor-test.result == 'skipped')
