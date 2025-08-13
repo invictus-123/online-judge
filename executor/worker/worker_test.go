@@ -90,18 +90,18 @@ func TestComputeTestCaseStatus(t *testing.T) {
 
 func TestComputeOverallStatus(t *testing.T) {
 	tests := []struct {
-		name        string
-		results     []types.TestCaseResultMessage
-		wantStatus  string
-		wantTime    float64
-		wantMemory  int64
+		name       string
+		results    []types.TestCaseResultMessage
+		wantStatus string
+		wantTime   float64
+		wantMemory int64
 	}{
 		{
-			name:        "empty results",
-			results:     []types.TestCaseResultMessage{},
-			wantStatus:  "COMPILATION_ERROR",
-			wantTime:    0.0,
-			wantMemory:  0,
+			name:       "empty results",
+			results:    []types.TestCaseResultMessage{},
+			wantStatus: "COMPILATION_ERROR",
+			wantTime:   0.0,
+			wantMemory: 0,
 		},
 		{
 			name: "all passed",

@@ -279,7 +279,7 @@ func TestInvalidSubmissions(t *testing.T) {
 
 func TestLargeInputSubmission(t *testing.T) {
 	submission := CreateLargeInputSubmission()
-	
+
 	if len(submission.TestCases) != 1 {
 		t.Fatalf("Expected 1 test case, got %d", len(submission.TestCases))
 	}
@@ -306,14 +306,14 @@ func TestLargeInputSubmission(t *testing.T) {
 
 func TestFibonacciSubmissionCases(t *testing.T) {
 	submission := CreateFibonacciSubmission()
-	
+
 	if len(submission.TestCases) != 4 {
 		t.Fatalf("Expected 4 test cases, got %d", len(submission.TestCases))
 	}
 
 	expectedResults := map[string]string{
 		"tc1": "0",
-		"tc2": "1", 
+		"tc2": "1",
 		"tc3": "5",
 		"tc4": "55",
 	}

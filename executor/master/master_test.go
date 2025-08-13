@@ -20,12 +20,12 @@ func (m *mockClient) Publish(exchange, routingKey string, body interface{}) erro
 
 func TestNewMaster(t *testing.T) {
 	mqClient := &mockClient{}
-	
+
 	master, err := NewMaster(mqClient, 5, "test.queue")
 	if err != nil {
 		t.Fatalf("NewMaster failed: %v", err)
 	}
-	
+
 	if master == nil {
 		t.Fatal("Master should not be nil")
 	}
@@ -42,12 +42,12 @@ func TestNewMaster(t *testing.T) {
 
 func TestNewMasterWithZeroWorkers(t *testing.T) {
 	mqClient := &mockClient{}
-	
+
 	master, err := NewMaster(mqClient, 0, "test.queue")
 	if err != nil {
 		t.Fatalf("NewMaster with zero workers failed: %v", err)
 	}
-	
+
 	if master == nil {
 		t.Fatal("Master should not be nil")
 	}
@@ -59,12 +59,12 @@ func TestNewMasterWithZeroWorkers(t *testing.T) {
 func TestMasterJobQueueCapacity(t *testing.T) {
 	workerCount := 10
 	mqClient := &mockClient{}
-	
+
 	master, err := NewMaster(mqClient, workerCount, "test.queue")
 	if err != nil {
 		t.Fatalf("NewMaster failed: %v", err)
 	}
-	
+
 	if cap(master.jobQueue) != workerCount {
 		t.Errorf("Job queue capacity = %d, want %d", cap(master.jobQueue), workerCount)
 	}

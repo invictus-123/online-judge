@@ -54,8 +54,10 @@ func (w *Worker) process(job amqp091.Delivery) {
 		return
 	}
 	var results []types.TestCaseResultMessage
-	for _, testCase := range submission.TestCases {
-		log.Printf("[Submission %d] [Worker %d] Running test case %s.", submission.SubmissionID, w.id, testCase.TestCaseID)
+	totalTestCases := len(submission.TestCases)
+	for i, testCase := range submission.TestCases {
+		testCaseIndex := i + 1
+		log.Printf("[Submission %d] [Worker %d] TestCase %d/%d: Starting execution", submission.SubmissionID, w.id, testCaseIndex, totalTestCases)
 
 		decodedInput, err := base64.StdEncoding.DecodeString(testCase.Input)
 		if err != nil {
@@ -92,7 +94,16 @@ func (w *Worker) process(job amqp091.Delivery) {
 		}
 
 		status := computeTestCaseStatus(execResult, string(decodedExpectedOutput))
-		
+
+		if status != "PASSED" {
+			log.Printf("[Submission %d] [Worker %d] TestCase %d/%d: %s - Expected: %q, Actual: %q",
+				submission.SubmissionID, w.id, testCaseIndex, totalTestCases, status,
+				strings.TrimSpace(string(decodedExpectedOutput)), strings.TrimSpace(execResult.Output))
+		} else {
+			log.Printf("[Submission %d] [Worker %d] TestCase %d/%d: PASSED",
+				submission.SubmissionID, w.id, testCaseIndex, totalTestCases)
+		}
+
 		results = append(results, types.TestCaseResultMessage{
 			TestCaseID: testCase.TestCaseID,
 			Output:     base64.StdEncoding.EncodeToString([]byte(execResult.Output)),
@@ -115,7 +126,8 @@ func (w *Worker) process(job amqp091.Delivery) {
 
 func sendResults(submissionID int64, results []types.TestCaseResultMessage, w *Worker) error {
 	overallStatus, maxTime, maxMemory := computeOverallStatus(results)
-	
+	log.Printf("[Submission %d] [Worker %d] Overall Status: %s (Time: %.3fs, Memory: %dKB)", submissionID, w.id, overallStatus, maxTime, maxMemory)
+
 	resultNotification := types.ResultNotificationMessage{
 		SubmissionID: submissionID,
 		Status:       overallStatus,
@@ -144,10 +156,10 @@ func computeTestCaseStatus(execResult *docker.ExecutionResult, expectedOutput st
 	if execResult.Status == "RUNTIME_ERROR" {
 		return "RUNTIME_ERROR"
 	}
-	
+
 	actualOutput := strings.TrimSpace(execResult.Output)
 	expectedOutput = strings.TrimSpace(expectedOutput)
-	
+
 	if actualOutput == expectedOutput {
 		return "PASSED"
 	}
@@ -158,11 +170,11 @@ func computeOverallStatus(results []types.TestCaseResultMessage) (string, float6
 	if len(results) == 0 {
 		return "COMPILATION_ERROR", 0.0, 0
 	}
-	
+
 	var maxTime float64
 	var maxMemory int64
 	overallStatus := "PASSED"
-	
+
 	for _, result := range results {
 		if result.TimeTaken > maxTime {
 			maxTime = result.TimeTaken
@@ -170,7 +182,7 @@ func computeOverallStatus(results []types.TestCaseResultMessage) (string, float6
 		if result.MemoryUsed > maxMemory {
 			maxMemory = result.MemoryUsed
 		}
-		
+
 		if result.Status == "COMPILATION_ERROR" {
 			overallStatus = "COMPILATION_ERROR"
 		} else if result.Status == "RUNTIME_ERROR" && overallStatus == "PASSED" {
@@ -183,6 +195,6 @@ func computeOverallStatus(results []types.TestCaseResultMessage) (string, float6
 			overallStatus = "WRONG_ANSWER"
 		}
 	}
-	
+
 	return overallStatus, maxTime, maxMemory
 }
