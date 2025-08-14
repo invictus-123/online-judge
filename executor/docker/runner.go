@@ -206,7 +206,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	}
 
 	// Add timeout for Docker exec operations to prevent hanging
-	dockerCtx, dockerCancel := context.WithTimeout(ctx, 30.0)
+	dockerCtx, dockerCancel := context.WithTimeout(ctx, 30*time.Second)
 	defer dockerCancel()
 
 	execResp, err := cli.ContainerExecAttach(dockerCtx, execID.ID, types.ExecStartCheck{})
@@ -269,7 +269,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 
 	// Wait for execution completion with timeout
 	done := make(chan error)
-	execCtx, execCancel := context.WithTimeout(ctx, time.Duration(timeLimitSeconds*float64(time.Second)))
+	execCtx, execCancel := context.WithTimeout(ctx, time.Duration(timeLimitSeconds)*time.Second)
 	defer execCancel()
 
 	go func() {
