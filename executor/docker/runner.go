@@ -89,7 +89,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		return nil, fmt.Errorf("failed to write source code: %w", err)
 	}
 
-
 	// Pull the Docker image if it doesn't exist
 	reader, err := cli.ImagePull(ctx, config.Image, types.ImagePullOptions{})
 	if err != nil {
@@ -129,7 +128,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	if err := copyFileToContainer(cli, ctx, resp.ID, sourceFilePath, config.SourceFile, submissionID); err != nil {
 		return nil, fmt.Errorf("failed to copy source file to container: %w", err)
 	}
-
 
 	// --- COMPILE STEP ---
 	if config.CompileCmd != nil {
@@ -177,8 +175,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 			}, nil
 		}
 
-
-
 		// For C++, make the executable file executable
 		if language == "CPP" {
 			chmodConfig := types.ExecConfig{
@@ -209,14 +205,18 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		return nil, fmt.Errorf("failed to create execution exec: %w", err)
 	}
 
-	execResp, err := cli.ContainerExecAttach(ctx, execID.ID, types.ExecStartCheck{})
+	// Add timeout for Docker exec operations to prevent hanging
+	dockerCtx, dockerCancel := context.WithTimeout(ctx, 30.0)
+	defer dockerCancel()
+
+	execResp, err := cli.ContainerExecAttach(dockerCtx, execID.ID, types.ExecStartCheck{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach to execution exec: %w", err)
 	}
 	defer execResp.Close()
 
 	// Start execution
-	if err := cli.ContainerExecStart(ctx, execID.ID, types.ExecStartCheck{}); err != nil {
+	if err := cli.ContainerExecStart(dockerCtx, execID.ID, types.ExecStartCheck{}); err != nil {
 		return nil, fmt.Errorf("failed to start execution exec: %w", err)
 	}
 
@@ -238,7 +238,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	go func() {
 		defer close(memoryDone)
 		defer memoryCancel()
-		
+
 		var maxMemory uint64 = 1024 * 1024 // Default 1MB in bytes
 		ticker := time.NewTicker(10 * time.Millisecond)
 		defer ticker.Stop()
@@ -271,7 +271,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	done := make(chan error)
 	execCtx, execCancel := context.WithTimeout(ctx, time.Duration(timeLimitSeconds*float64(time.Second)))
 	defer execCancel()
-	
+
 	go func() {
 		defer close(done)
 		// Use context-aware copy to prevent hanging
@@ -307,7 +307,7 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 			memoryUsageKB = 1024 // Default to 1MB if we can't measure
 		}
 	case <-time.After(1 * time.Second):
-		memoryCancel() // Ensure memory monitoring stops
+		memoryCancel()       // Ensure memory monitoring stops
 		memoryUsageKB = 1024 // Default value
 	}
 
@@ -361,7 +361,6 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 		}, nil
 	}
 
-
 	return &ExecutionResult{
 		Status:     "ACCEPTED",
 		Output:     strings.TrimSpace(stdout),
@@ -404,7 +403,6 @@ func copyFileToContainer(cli *client.Client, ctx context.Context, containerID, h
 	if err := cli.CopyToContainer(ctx, containerID, "/app", &buf, types.CopyToContainerOptions{}); err != nil {
 		return fmt.Errorf("failed to copy to container: %w", err)
 	}
-
 
 	return nil
 }
