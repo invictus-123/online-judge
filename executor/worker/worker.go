@@ -71,6 +71,7 @@ func (w *Worker) process(job amqp091.Delivery) {
 		}
 
 		memoryLimitBytes := submission.MemoryLimit * 1024 * 1024 // Convert MB to bytes
+		log.Printf("[Submission %d] [Worker %d] TestCase %d/%d: Executing code with %ds timeout", submission.SubmissionID, w.id, testCaseIndex, totalTestCases, int(submission.TimeLimit))
 		execResult, err := docker.RunInContainerWithLimits(submission.SubmissionID, submission.Language, string(decodedCode), string(decodedInput), submission.TimeLimit, memoryLimitBytes)
 		if err != nil {
 			log.Printf("[Submission %d] [Worker %d] Execution failed for test case %s: %v", submission.SubmissionID, w.id, testCase.TestCaseID, err)

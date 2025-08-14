@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -220,32 +221,35 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	}
 
 	// Write input to stdin
+	log.Printf("[Submission %d] Writing input to container stdin", submissionID)
 	_, err = execResp.Conn.Write([]byte(input))
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to stdin: %w", err)
 	}
 	execResp.CloseWrite() // Close stdin to signal end of input
+	log.Printf("[Submission %d] Starting execution monitoring", submissionID)
 
 	startTime := time.Now()
 	var memoryUsageKB int64
 
 	// Start memory monitoring
-	memoryDone := make(chan int64)
+	memoryDone := make(chan int64, 1)
+	memoryCtx, memoryCancel := context.WithTimeout(ctx, time.Duration(timeLimitSeconds*1.5)*time.Second)
 	go func() {
+		defer close(memoryDone)
+		defer memoryCancel()
+		
 		var maxMemory uint64 = 1024 * 1024 // Default 1MB in bytes
-
-		// Monitor for a maximum duration to prevent hanging
-		timeout := time.After(time.Duration(timeLimitSeconds*1.5) * time.Second)
 		ticker := time.NewTicker(10 * time.Millisecond)
 		defer ticker.Stop()
 
 		for {
 			select {
-			case <-timeout:
+			case <-memoryCtx.Done():
 				memoryDone <- int64(maxMemory / 1024)
 				return
 			case <-ticker.C:
-				stats, err := cli.ContainerStats(ctx, resp.ID, false)
+				stats, err := cli.ContainerStats(memoryCtx, resp.ID, false)
 				if err != nil {
 					continue // Continue monitoring on error
 				}
@@ -264,32 +268,53 @@ func RunInContainerWithLimits(submissionID int64, language, code, input string, 
 	}()
 
 	// Wait for execution completion with timeout
-	done := make(chan bool)
+	done := make(chan error)
+	execCtx, execCancel := context.WithTimeout(ctx, time.Duration(timeLimitSeconds*float64(time.Second)))
+	defer execCancel()
+	
 	go func() {
-		// Wait for the process by reading from execResp
-		io.Copy(ioutil.Discard, execResp.Reader)
-		done <- true
+		defer close(done)
+		// Use context-aware copy to prevent hanging
+		_, err := io.Copy(ioutil.Discard, execResp.Reader)
+		select {
+		case done <- err:
+		case <-execCtx.Done():
+			// Context cancelled, don't block
+		}
 	}()
 
 	timeLimit := time.Duration(timeLimitSeconds * float64(time.Second))
 	var timedOut bool
 	select {
 	case <-time.After(timeLimit):
+		execCancel() // Cancel the copy operation
 		cli.ContainerKill(ctx, resp.ID, "SIGKILL")
 		timedOut = true
-	case <-done:
+		// Give a brief moment for cleanup
+		time.Sleep(100 * time.Millisecond)
+	case copyErr := <-done:
+		if copyErr != nil && execCtx.Err() != nil {
+			// Copy was cancelled due to timeout
+			timedOut = true
+		}
 		// Execution completed, check exit code
 	}
 
-	// Wait for memory monitoring to complete
-	memoryUsageKB = <-memoryDone
-	if memoryUsageKB <= 0 {
-		memoryUsageKB = 1024 // Default to 1MB if we can't measure
+	// Wait for memory monitoring to complete with timeout
+	select {
+	case memoryUsageKB = <-memoryDone:
+		if memoryUsageKB <= 0 {
+			memoryUsageKB = 1024 // Default to 1MB if we can't measure
+		}
+	case <-time.After(1 * time.Second):
+		memoryCancel() // Ensure memory monitoring stops
+		memoryUsageKB = 1024 // Default value
 	}
 
 	execTime := time.Since(startTime)
 
 	if timedOut {
+		log.Printf("[Submission %d] Code execution timed out after %.3fs", submissionID, execTime.Seconds())
 		return &ExecutionResult{
 			Status:     "TIME_LIMIT_EXCEEDED",
 			Output:     "Time limit exceeded",
