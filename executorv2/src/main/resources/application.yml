@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: executorv2
+  profiles:
+    active: local
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.online.judge.executorv2: DEBUG
+    org.springframework: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+server:
+  port: 8081
+
+executor:
+  worker:
+    count: 5
+  timeout:
+    default: 5s
+    max: 30s
+  memory:
+    default: 256
+    max: 1024
+
+logging:
+  level:
+    com.online.judge.executorv2: DEBUG
